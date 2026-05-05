@@ -25,6 +25,7 @@ import COMMAND_SUM_COMFORT from './sum-comfort.js';
 import COMMAND_SUM_COMPLAIN from './sum-complain.js';
 import COMMAND_SUM_ENCOURAGE from './sum-encourage.js';
 import COMMAND_SUM_LAUGH from './sum-laugh.js';
+import COMMAND_SUM_ORGANIZE_PHONE from './sum-organize-phone.js';
 import COMMAND_SUM_SUM from './sum-sum.js';
 import COMMAND_SYS_COMMAND from './sys-command.js';
 import COMMAND_SYS_DEPLOY from './sys-deploy.js';
@@ -59,6 +60,7 @@ export const ALL_COMMANDS = [
   COMMAND_SUM_COMPLAIN,
   COMMAND_SUM_ENCOURAGE,
   COMMAND_SUM_LAUGH,
+  COMMAND_SUM_ORGANIZE_PHONE,
   COMMAND_SUM_SUM,
   COMMAND_SYS_COMMAND,
   COMMAND_SYS_DEPLOY,
@@ -120,6 +122,7 @@ export {
   COMMAND_SUM_COMPLAIN,
   COMMAND_SUM_ENCOURAGE,
   COMMAND_SUM_LAUGH,
+  COMMAND_SUM_ORGANIZE_PHONE,
   COMMAND_SUM_SUM,
   COMMAND_SYS_COMMAND,
   COMMAND_SYS_DEPLOY,
