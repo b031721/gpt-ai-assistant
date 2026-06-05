@@ -48,7 +48,7 @@ const config = Object.freeze({
   SERPAPI_TIMEOUT: env.SERPAPI_TIMEOUT || env.APP_API_TIMEOUT,
   SERPAPI_API_KEY: env.SERPAPI_API_KEY || null,
   SERPAPI_LOCATION: env.SERPAPI_LOCATION || 'Taiwan',
-  SERPAPI_LANG: env.SERPAPI_LANG || 'lang_zh-TW',
+  SERPAPI_LANG: env.SERPAPI_LANG || '',
 });
 
 export default config;
