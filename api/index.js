@@ -28,12 +28,15 @@ app.get('/info', async (req, res) => {
 });
 
 app.post(config.APP_WEBHOOK_PATH, validateLineSignature, async (req, res) => {
+  const events = req.body.events || [];
+  console.log('[webhook] received', events.length, 'event(s):', JSON.stringify(events.map((e) => ({ type: e.type, sourceType: e.source?.type }))));
   try {
     await storage.initialize();
-    await handleEvents(req.body.events);
+    await handleEvents(events);
     res.sendStatus(200);
+    console.log('[webhook] responded 200');
   } catch (err) {
-    console.error(err.message);
+    console.error('[webhook] error:', err.message);
     res.sendStatus(500);
   }
   if (config.APP_DEBUG) printPrompts();
