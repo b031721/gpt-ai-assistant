@@ -14,6 +14,8 @@ app.use(express.json({
   },
 }));
 
+app.use('/reader', express.static(new URL('../public/reader', import.meta.url).pathname));
+
 app.get('/', (req, res) => {
   if (config.APP_URL) {
     res.redirect(config.APP_URL);
