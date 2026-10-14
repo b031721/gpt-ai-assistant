@@ -58,7 +58,8 @@
     transition: transform .25s;
   }
   header.hidden { transform: translateY(-110%); }
-  header .title { flex: 1; min-width: 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
+  header .title { flex: 1; min-width: 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 7px 6px; text-align: left; }
+  header .title small { color: var(--faint); font-size: 12px; margin-left: 6px; }
   header button { padding: 7px 10px; border-radius: 8px; font-size: 14px; white-space: nowrap; }
   header button:hover { background: var(--rule); }
   #pct { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; min-width: 3ch; text-align: right; }
@@ -70,6 +71,7 @@
   }
   main p { margin: 0 0 1em; text-align: justify; text-indent: var(--indent, 0); overflow-wrap: anywhere; }
   main.cjk { --indent: 2em; }
+  main p.toc-line { text-indent: 0; margin-bottom: .3em; color: var(--faint); }
   main h1 { font-size: 1.9em; line-height: 1.35; text-align: center; margin: 1.2em 0 .2em; text-wrap: balance; }
   main .byline { text-align: center; color: var(--faint); margin-bottom: 3em; font-size: .9em; }
   main h2 { font-size: 1.2em; text-align: center; margin: 3.5em 0 1.5em; letter-spacing: .08em; scroll-margin-top: 72px; text-wrap: balance; }
@@ -144,7 +146,7 @@
 <div id="progress"></div>
 <header id="bar">
   <button id="btnShelf">書架</button>
-  <div class="title" id="barTitle">捲軸書房</div>
+  <button class="title" id="barTitle" aria-label="目前章節，點一下打開目錄">捲軸書房</button>
   <span id="pct"></span>
   <button id="btnToc">目錄</button>
   <button id="btnSet" aria-label="閱讀設定">Aa</button>
@@ -215,19 +217,23 @@
       if (this.p) return this.p;
       this.p = new Promise((resolve) => {
         try {
-          const req = indexedDB.open('reader', 1);
-          req.onupgradeneeded = () => req.result.createObjectStore('books', { keyPath: 'id' });
+          const req = indexedDB.open('reader', 2);
+          req.onupgradeneeded = () => {
+            const d = req.result;
+            if (!d.objectStoreNames.contains('books')) d.createObjectStore('books', { keyPath: 'id' });
+            if (!d.objectStoreNames.contains('pos')) d.createObjectStore('pos');
+          };
           req.onsuccess = () => resolve(req.result);
           req.onerror = () => resolve(null);
         } catch { resolve(null); }
       });
       return this.p;
     },
-    async run(mode, fn) {
+    async run(mode, fn, name = 'books') {
       const d = await this.open(); if (!d) return null;
       return new Promise((resolve) => {
         try {
-          const tx = d.transaction('books', mode); const r = fn(tx.objectStore('books'));
+          const tx = d.transaction(name, mode); const r = fn(tx.objectStore(name));
           tx.oncomplete = () => resolve(r && r.result); tx.onerror = () => resolve(null);
         } catch { resolve(null); }
       });
@@ -236,6 +242,8 @@
     get(id) { return this.run('readonly', (s) => s.get(id)); },
     put(b) { return this.run('readwrite', (s) => s.put(b)); },
     del(id) { return this.run('readwrite', (s) => s.delete(id)); },
+    getPos(id) { return this.run('readonly', (s) => s.get(id), 'pos'); },
+    setPos(id, v) { return this.run('readwrite', (s) => s.put(v, id), 'pos'); },
   };
 
   /* ---------- 閱讀設定 ---------- */
@@ -254,8 +262,8 @@
     store.set('reader:prefs', prefs);
   }
   function keepPosition(fn) {
-    const r = scrollRatio(); fn();
-    requestAnimationFrame(() => scrollTo({ top: r * maxScroll(), behavior: 'instant' }));
+    const a = anchor(); fn();
+    requestAnimationFrame(() => goAnchor(a));
   }
   document.querySelectorAll('#sizeSeg button').forEach((b) => { b.onclick = () => keepPosition(() => { prefs.font = +b.dataset.size; applyPrefs(); }); });
   document.querySelectorAll('#rateSeg button').forEach((b) => { b.onclick = () => { prefs.rate = +b.dataset.rate; applyPrefs(); tts.restartChunk(); }; });
@@ -400,7 +408,12 @@
   const drawers = ['#toc', '#shelf', '#settings'].map((s) => $(s));
   const openDrawer = (el) => { drawers.forEach((d) => d.classList.toggle('open', d === el)); $('#scrim').classList.add('show'); };
   const closeDrawers = () => { drawers.forEach((d) => d.classList.remove('open')); $('#scrim').classList.remove('show'); };
-  $('#btnToc').onclick = () => openDrawer($('#toc'));
+  const openToc = () => {
+    openDrawer($('#toc'));
+    const on = $('#tocList .active'); if (on) on.scrollIntoView({ block: 'center' });
+  };
+  $('#btnToc').onclick = openToc;
+  $('#barTitle').onclick = () => { if (current) openToc(); };
   $('#btnShelf').onclick = () => openDrawer($('#shelf'));
   $('#btnSet').onclick = () => openDrawer($('#settings'));
   $('#scrim').onclick = closeDrawers;
@@ -408,7 +421,7 @@
   addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawers(); });
 
   /* ---------- txt 轉 HTML ---------- */
-  const CHAPTER_RE = /^\s*(chapter\s+[ivxlcdm\d]+\.?.*|第[一二三四五六七八九十百千零〇兩\d]+[章回節卷部篇].{0,30}|[序楔]子|序[章言幕]?|尾聲|後記|附錄.*|preface.*|appendix.*)\s*$/i;
+  const CHAPTER_RE = /^\s*(chapter\s+[ivxlcdm\d]+\.?.*|第[一二三四五六七八九十百千零〇兩\d]+[章回節卷部篇].{0,30}|[序楔]子|序[章言幕曲]?|[代譯自原]序|作者序|前言|導[讀言]|引言|尾聲|終章|後記|跋|附錄.*|作者年表|年表|preface.*|appendix.*|epilogue|prologue)\s*$/i;
   function txtToHtml(text) {
     text = text.replace(/\r\n?/g, '\n').replace(/^﻿/, '');
     // 中文 txt 常常一行一段、沒有空行
@@ -620,12 +633,37 @@
     render(b);
   }
 
+  // 書裡沒標成標題、但長得像「第三章」的短段落，也當成章節；
+  // 連續三個以上中間沒有內文的章節名（書本自己的目錄頁），則還原成一般文字
+  function markChapters() {
+    book.querySelectorAll('p').forEach((p) => {
+      const t = p.textContent.trim();
+      if (t.length <= 30 && CHAPTER_RE.test(t) && !p.classList.contains('end')) {
+        const h = document.createElement('h2'); h.textContent = t; p.replaceWith(h);
+      }
+    });
+    const hs = [...book.querySelectorAll('h2')];
+    let run = [];
+    const flushRun = () => {
+      // 清單最後一個後面接著內文的話，它是真正的章節開頭，要留著
+      if (run.length >= 3) run.slice(0, -1).concat(run[run.length - 1].nextElementSibling?.tagName === 'P' ? [] : run.slice(-1)).forEach((h) => { const p = document.createElement('p'); p.textContent = h.textContent; p.className = 'toc-line'; h.replaceWith(p); });
+      run = [];
+    };
+    hs.forEach((h, i) => {
+      if (run.length && hs[i - 1].nextElementSibling !== h) flushRun();
+      run.push(h);
+    });
+    flushRun();
+  }
+
   function render(b) {
     tts.stop();
+    restoring = true;
     current = { id: b.id, title: b.title };
     store.set('reader:last', b.id);
     book.className = /[一-鿿]/.test(b.html.slice(0, 4000)) ? 'cjk' : '';
     book.innerHTML = `<h1>${esc(b.title)}</h1>${b.author ? `<div class="byline">${esc(b.author)}</div>` : ''}${b.html}<p class="end">— 全書完 —</p>`;
+    markChapters();
     headings = [...book.querySelectorAll('h2')];
     headings.forEach((h, i) => { h.id = 'ch' + i; });
     $('#tocList').innerHTML = headings.length
@@ -636,9 +674,60 @@
     document.title = b.title + '｜捲軸書房';
     tts.show();
     refreshShelf();
-    const pos = store.get('reader:pos:' + b.id, 0);
-    requestAnimationFrame(() => { scrollTo({ top: pos * maxScroll(), behavior: 'instant' }); onScroll(); });
+    restorePosition(b.id);
   }
+
+  /* ---------- 閱讀位置 ---------- */
+  let restoring = false;
+  const blocks = () => [...book.querySelectorAll('h1, .byline, h2, p, blockquote, img')];
+  function anchor() {
+    const els = blocks(); const top = 64;
+    const i = els.findIndex((el) => el.getBoundingClientRect().bottom > top);
+    if (i < 0) return { i: 0, f: 0 };
+    const r = els[i].getBoundingClientRect();
+    return { i, f: Math.max(0, Math.min(1, (top - r.top) / (r.height || 1))) };
+  }
+  function goAnchor(a) {
+    const el = blocks()[a.i]; if (!el) return;
+    const r = el.getBoundingClientRect();
+    scrollTo({ top: scrollY + r.top + a.f * r.height - 64, behavior: 'instant' });
+  }
+  function chapterAt(i) {
+    const els = blocks(); let name = '';
+    for (let k = 0; k <= i && k < els.length; k++) if (els[k].tagName === 'H2') name = els[k].textContent;
+    return name;
+  }
+  async function restorePosition(id) {
+    let a = store.get('reader:anchor:' + id, null) || await db.getPos(id);
+    if (!current || current.id !== id) return;
+    if (!a) {
+      const old = store.get('reader:pos:' + id, 0);   // 舊版存的是百分比
+      requestAnimationFrame(() => { scrollTo({ top: old * maxScroll(), behavior: 'instant' }); restoring = false; onScroll(); });
+      return;
+    }
+    const go = () => { if (current && current.id === id) goAnchor(a); };
+    requestAnimationFrame(() => {
+      go();
+      restoring = false; onScroll();
+      lastY = scrollY; $('#bar').classList.remove('hidden');   // 讓上方顯示目前在第幾章
+      if (a.i > 3) toast('回到上次讀到的地方' + (chapterAt(a.i) ? `：${chapterAt(a.i)}` : ''));
+    });
+    // 字型、圖片晚一點載入會讓版面變高，再對準一次
+    const again = () => { if (Date.now() - lastUserScroll > 1500) go(); };
+    document.fonts?.ready.then(again);
+    book.querySelectorAll('img').forEach((img) => { if (!img.complete) img.addEventListener('load', again, { once: true }); });
+  }
+  let lastUserScroll = 0;
+  ['touchstart', 'wheel', 'keydown'].forEach((ev) => addEventListener(ev, () => { lastUserScroll = Date.now(); }, { passive: true }));
+  function savePosition() {
+    if (!current || restoring) return;
+    const a = anchor();
+    a.at = Date.now();
+    store.set('reader:anchor:' + current.id, a);
+    db.setPos(current.id, a);
+  }
+  addEventListener('pagehide', savePosition);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) savePosition(); });
 
   function welcome(lead) {
     tts.stop();
@@ -675,7 +764,11 @@
     let idx = -1;
     for (let i = 0; i < headings.length; i++) { if (headings[i].getBoundingClientRect().top < innerHeight * 0.4) idx = i; else break; }
     $('#tocList').querySelectorAll('button').forEach((b, i) => b.classList.toggle('active', i === idx));
-    if (current) { clearTimeout(saveTimer); const id = current.id; saveTimer = setTimeout(() => store.set('reader:pos:' + id, r), 300); }
+    if (current) {
+      const ch = idx >= 0 ? headings[idx].textContent : '';
+      $('#barTitle').innerHTML = ch ? `${esc(ch)}<small>${esc(current.title)}</small>` : esc(current.title);
+      clearTimeout(saveTimer); saveTimer = setTimeout(savePosition, 400);
+    }
   }
   addEventListener('scroll', onScroll, { passive: true });
   book.addEventListener('click', (e) => {
