@@ -115,7 +115,28 @@
   label.file { position: relative; overflow: hidden; display: block; text-align: center; padding: 12px; border: 1px dashed var(--faint); border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 14px; }
   .picker { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 200px; }
   #status { font-family: var(--font-ui); font-size: 15px; line-height: 1.7; color: var(--ink); text-align: center; min-height: 1.5em; }
-  #toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); font-family: var(--font-ui); font-size: 14px; padding: 10px 16px; border-radius: 8px; z-index: 50; max-width: calc(100vw - 32px); }
+  #toast { position: fixed; left: 50%; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); font-family: var(--font-ui); font-size: 14px; padding: 10px 16px; border-radius: 8px; z-index: 50; max-width: calc(100vw - 32px); }
+  /* 朗讀 */
+  main .speaking { background: color-mix(in srgb, var(--seal) 13%, transparent); box-shadow: 0 0 0 .35em color-mix(in srgb, var(--seal) 13%, transparent); border-radius: 4px; }
+  #player {
+    position: fixed; z-index: 25; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 999px;
+    background: var(--sheet); border: 1px solid var(--rule); box-shadow: 0 4px 18px rgba(0,0,0,.18); font-family: var(--font-ui);
+  }
+  #player button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; height: 44px; padding: 0 12px; border-radius: 999px; font-size: 15px; }
+  #player button:hover { background: var(--rule); }
+  #player .main { background: var(--seal); color: var(--on-seal); font-weight: 600; }
+  #player .main:hover { background: var(--seal); filter: brightness(1.08); }
+  #player svg { width: 18px; height: 18px; fill: currentColor; }
+  #player .rate { font-variant-numeric: tabular-nums; font-size: 14px; min-width: 52px; }
+  #player:not(.active) .ctl { display: none; }
+  .sizes button:nth-child(1) { font-size: 12px; } .sizes button:nth-child(2) { font-size: 14px; } .sizes button:nth-child(3) { font-size: 16px; }
+  .sizes button:nth-child(4) { font-size: 18px; } .sizes button:nth-child(5) { font-size: 20px; }
+  .sizes button { padding: 6px 9px; }
+  select { font: inherit; font-size: 14px; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 7px 8px; width: 100%; }
+  .stack { display: grid; gap: 8px; margin: 16px 0; font-size: 14px; }
+  .drawer h4 { margin: 24px 0 4px; font-size: 14px; color: var(--faint); font-weight: 600; letter-spacing: .05em; }
+  .ghost { border: 1px solid var(--rule) !important; border-radius: 8px; padding: 6px 12px; font-size: 14px; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 </style>
 </head>
@@ -143,7 +164,7 @@
 <aside class="drawer" id="settings" aria-label="閱讀設定">
   <h3>閱讀設定 <button data-close aria-label="關閉">✕</button></h3>
   <div class="row">字體大小
-    <div class="seg"><button data-font="-1">A−</button><button data-font="1">A＋</button></div>
+    <div class="seg sizes" id="sizeSeg"><button data-size="16">小</button><button data-size="18">較小</button><button data-size="20">標準</button><button data-size="23">大</button><button data-size="27">特大</button></div>
   </div>
   <div class="row">行距
     <div class="seg" id="lhSeg"><button data-lh="1.6">緊</button><button data-lh="1.9">中</button><button data-lh="2.3">鬆</button></div>
@@ -151,8 +172,23 @@
   <div class="row">紙色
     <div class="seg" id="paperSeg"><button data-paper="">跟隨系統</button><button data-paper="sepia">米黃</button><button data-paper="white">白</button><button data-paper="night">夜間</button></div>
   </div>
+  <h4>朗讀</h4>
+  <div class="stack"><label for="ttsVoice">聲音</label><select id="ttsVoice"></select></div>
+  <div class="row">語速
+    <div class="seg" id="rateSeg"><button data-rate="0.75">慢</button><button data-rate="0.9">標準</button><button data-rate="1.1">稍快</button><button data-rate="1.3">快</button></div>
+  </div>
+  <div class="row"><span class="hint">聲音清單來自你的手機系統。</span><button class="ghost" id="ttsTry">試聽</button></div>
+  <p class="hint" id="ttsNote"></p>
   <p class="hint">一直往下滑就能讀完整本書。往下讀時工具列會自動收起，往上滑一點或點一下文字就會出現。閱讀位置會自動記住。</p>
+  <p class="hint">聽書時，從畫面上第一段開始念，畫面會跟著捲動。朗讀中點任何一段，就會改從那段開始念。手機螢幕關掉後，有些瀏覽器會停止朗讀。</p>
 </aside>
+<div id="player" hidden>
+  <button class="ctl" id="ttsPrev" aria-label="上一段"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+  <button class="main" id="ttsPlay" aria-label="聽書"><svg viewBox="0 0 24 24" id="ttsIcon"><path d="M7 4v16l13-8z"/></svg><span id="ttsLabel">聽書</span></button>
+  <button class="ctl" id="ttsNext" aria-label="下一段"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+  <button class="ctl rate" id="ttsRate" aria-label="語速"></button>
+  <button class="ctl" id="ttsStop" aria-label="停止朗讀"><svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg></button>
+</div>
 <div id="toast" hidden></div>
 
 <script>
@@ -203,11 +239,16 @@
   };
 
   /* ---------- 閱讀設定 ---------- */
-  const prefs = Object.assign({ font: 19, lh: 1.9, paper: '' }, store.get('reader:prefs', {}));
+  const prefs = Object.assign({ font: 20, lh: 1.9, paper: '', rate: 0.9, voice: '' }, store.get('reader:prefs', {}));
+  const SIZES = [16, 18, 20, 23, 27];
+  prefs.font = SIZES.reduce((a, b) => (Math.abs(b - prefs.font) < Math.abs(a - prefs.font) ? b : a));
   function applyPrefs() {
     root.style.setProperty('--size', prefs.font + 'px');
     root.style.setProperty('--lead', prefs.lh);
     if (prefs.paper) root.dataset.paper = prefs.paper; else delete root.dataset.paper;
+    document.querySelectorAll('#sizeSeg button').forEach((b) => b.classList.toggle('on', +b.dataset.size === prefs.font));
+    document.querySelectorAll('#rateSeg button').forEach((b) => b.classList.toggle('on', +b.dataset.rate === prefs.rate));
+    const rb = $('#ttsRate'); if (rb) rb.textContent = prefs.rate.toFixed(2).replace(/0$/, '') + '×';
     document.querySelectorAll('#lhSeg button').forEach((b) => b.classList.toggle('on', +b.dataset.lh === prefs.lh));
     document.querySelectorAll('#paperSeg button').forEach((b) => b.classList.toggle('on', b.dataset.paper === prefs.paper));
     store.set('reader:prefs', prefs);
@@ -216,10 +257,144 @@
     const r = scrollRatio(); fn();
     requestAnimationFrame(() => scrollTo({ top: r * maxScroll(), behavior: 'instant' }));
   }
-  document.querySelectorAll('[data-font]').forEach((b) => { b.onclick = () => keepPosition(() => { prefs.font = Math.min(32, Math.max(14, prefs.font + +b.dataset.font)); applyPrefs(); }); });
+  document.querySelectorAll('#sizeSeg button').forEach((b) => { b.onclick = () => keepPosition(() => { prefs.font = +b.dataset.size; applyPrefs(); }); });
+  document.querySelectorAll('#rateSeg button').forEach((b) => { b.onclick = () => { prefs.rate = +b.dataset.rate; applyPrefs(); tts.restartChunk(); }; });
   document.querySelectorAll('[data-lh]').forEach((b) => { b.onclick = () => keepPosition(() => { prefs.lh = +b.dataset.lh; applyPrefs(); }); });
   document.querySelectorAll('#paperSeg button').forEach((b) => { b.onclick = () => { prefs.paper = b.dataset.paper; applyPrefs(); }; });
   applyPrefs();
+
+  /* ---------- 朗讀（瀏覽器內建的語音合成）---------- */
+  const tts = (() => {
+    const synth = window.speechSynthesis;
+    const SELECTOR = 'main h1, main .byline, main h2, main p:not(.end), main blockquote';
+    // 依序偏好：聽起來比較柔和的中文女聲
+    const SOFT = [/HsiaoChen|曉臻/i, /HsiaoYu|曉雨/i, /Yating|雅婷/i, /Mei-?Jia|美佳/i, /Xiaoxiao|曉曉/i, /Google.*(國語|臺灣|台灣)/i, /Google.*(普通话|中文)/i, /female|女/i, /Samantha|Aria|Jenny|Ava|Google US English/i];
+    const t = { SELECTOR, playing: false, paras: [], idx: 0, chunks: [], ci: 0, u: null, lock: null, userScrollAt: 0 };
+    const isCjk = () => book.classList.contains('cjk') || !current;
+    const score = (v) => { const i = SOFT.findIndex((r) => r.test(v.name)); return (i < 0 ? 50 : i) + (/zh[-_]TW|zh[-_]Hant/i.test(v.lang) ? 0 : 20) + (v.localService ? 0 : 1); };
+    function voices() {
+      if (!synth) return [];
+      const all = synth.getVoices();
+      const want = isCjk() ? /^zh|^cmn|^yue/i : /^en/i;
+      const fit = all.filter((v) => want.test(v.lang));
+      return (fit.length ? fit : all).sort((a, b) => score(a) - score(b));
+    }
+    function pickVoice() { const vs = voices(); return vs.find((v) => v.voiceURI === prefs.voice) || vs[0] || null; }
+    function fillVoices() {
+      const sel = $('#ttsVoice'); if (!sel) return;
+      const vs = voices();
+      const chosen = pickVoice();
+      sel.innerHTML = vs.length ? vs.map((v) => `<option value="${esc(v.voiceURI)}"${chosen && v.voiceURI === chosen.voiceURI ? ' selected' : ''}>${esc(v.name)}（${esc(v.lang)}）${score(v) < 8 ? '・柔和' : ''}</option>`).join('')
+        : '<option value="">使用系統預設聲音</option>';
+      $('#ttsNote').textContent = !synth ? '這個瀏覽器不支援朗讀。請用 Chrome 或 Safari。'
+        : vs.length ? '' : '找不到中文聲音。可以到手機的「設定 → 文字轉語音」下載中文語音。';
+    }
+    function chunk(text) {
+      // 長段落切成句子，避免部分瀏覽器念到一半中斷
+      const parts = text.match(/[^。！？；!?;…]+[。！？；!?;…」』”）)]*|.+$/g) || [text];
+      const out = []; let buf = '';
+      for (const s of parts) { if ((buf + s).length > 140 && buf) { out.push(buf); buf = s; } else buf += s; }
+      if (buf.trim()) out.push(buf);
+      return out;
+    }
+    function mark() {
+      book.querySelectorAll('.speaking').forEach((el) => el.classList.remove('speaking'));
+      const el = t.paras[t.idx]; if (!el) return;
+      el.classList.add('speaking');
+      if (Date.now() - t.userScrollAt > 5000) el.scrollIntoView({ behavior: 'smooth', block: 'center' });   // 你自己捲動時，5 秒內不跟著跑
+    }
+    function say() {
+      if (!t.playing) return;
+      const el = t.paras[t.idx];
+      if (!el) { stop(); toast('全書念完了'); return; }
+      if (t.ci === 0) { t.chunks = chunk(el.textContent.replace(/\s+/g, ' ').trim()); mark(); }
+      if (!t.chunks.length) { t.idx++; t.ci = 0; say(); return; }
+      const u = new SpeechSynthesisUtterance(t.chunks[t.ci]);
+      const v = pickVoice();
+      if (v) { u.voice = v; u.lang = v.lang; } else u.lang = isCjk() ? 'zh-TW' : 'en-US';
+      u.rate = prefs.rate; u.pitch = 1; u.volume = 1;
+      const advance = () => {
+        if (t.u !== u || !t.playing) return;
+        t.ci++;
+        if (t.ci >= t.chunks.length) { t.idx++; t.ci = 0; }
+        say();
+      };
+      u.onend = () => { t.fails = 0; advance(); };
+      u.onerror = (e) => {
+        if (e.error === 'interrupted' || e.error === 'canceled' || t.u !== u) return;
+        t.fails = (t.fails || 0) + 1;
+        if (t.fails >= 3) { stop(); toast('朗讀失敗了。請到「Aa」換一個聲音再試。'); return; }
+        advance();
+      };
+      t.u = u;
+      synth.speak(u);
+    }
+    function ui() {
+      $('#player').classList.toggle('active', t.playing || t.paused);
+      $('#ttsLabel').textContent = t.playing ? '暫停' : (t.paused ? '繼續' : '聽書');
+      $('#ttsIcon').innerHTML = t.playing ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' : '<path d="M7 4v16l13-8z"/>';
+      $('#ttsPlay').setAttribute('aria-label', $('#ttsLabel').textContent);
+    }
+    async function wake(on) {
+      try {
+        if (on && !t.lock && navigator.wakeLock) t.lock = await navigator.wakeLock.request('screen');
+        if (!on && t.lock) { await t.lock.release(); t.lock = null; }
+      } catch { t.lock = null; }
+    }
+    function collect() { t.paras = [...book.querySelectorAll(SELECTOR)].filter((el) => el.textContent.trim()); }
+    function firstVisible() {
+      const top = 70;
+      const i = t.paras.findIndex((el) => el.getBoundingClientRect().bottom > top);
+      return i < 0 ? 0 : i;
+    }
+    function play(fromIdx) {
+      if (!synth || !current) return;
+      collect();
+      t.u = null; synth.cancel();
+      t.idx = fromIdx ?? (t.paused ? t.idx : firstVisible());
+      if (!t.paused || fromIdx != null) t.ci = 0;
+      t.playing = true; t.paused = false; t.userScrollAt = 0;
+      ui(); wake(true);
+      setTimeout(say, 60);   // 讓 cancel() 先完成
+    }
+    function pause() { t.playing = false; t.paused = true; t.u = null; synth.cancel(); ui(); wake(false); }
+    function stop() {
+      t.playing = false; t.paused = false; t.u = null;
+      if (synth) synth.cancel();
+      book.querySelectorAll('.speaking').forEach((el) => el.classList.remove('speaking'));
+      if ($('#player')) { ui(); $('#player').hidden = !synth || !current; }
+      wake(false);
+    }
+    t.stop = stop;
+    t.startAt = (el) => { collect(); const i = t.paras.indexOf(el); if (i >= 0) play(i); };
+    t.restartChunk = () => { if (t.playing) { t.u = null; synth.cancel(); setTimeout(say, 60); } };
+    t.show = () => { $('#player').hidden = !synth || !current; fillVoices(); };
+    if (synth) {
+      fillVoices();
+      synth.addEventListener?.('voiceschanged', fillVoices);
+      $('#ttsPlay').onclick = () => (t.playing ? pause() : play());
+      $('#ttsStop').onclick = stop;
+      $('#ttsPrev').onclick = () => { if (t.idx > 0) play(t.idx - 1); };
+      $('#ttsNext').onclick = () => play(Math.min(t.idx + 1, t.paras.length - 1));
+      $('#ttsRate').onclick = () => {
+        const RATES = [0.75, 0.9, 1.1, 1.3];
+        prefs.rate = RATES[(RATES.indexOf(prefs.rate) + 1) % RATES.length]; applyPrefs(); t.restartChunk();
+      };
+      $('#ttsVoice').onchange = (e) => { prefs.voice = e.target.value; applyPrefs(); t.restartChunk(); };
+      $('#ttsTry').onclick = () => {
+        if (t.playing) pause();
+        synth.cancel();
+        const v = pickVoice();
+        const u = new SpeechSynthesisUtterance(isCjk() ? '你好，我會用這個聲音為你朗讀。' : 'Hello, I will read this book to you in this voice.');
+        if (v) { u.voice = v; u.lang = v.lang; }
+        u.rate = prefs.rate; synth.speak(u);
+      };
+      document.addEventListener('visibilitychange', () => { if (!document.hidden && t.playing) wake(true); });
+    } else {
+      $('#ttsNote').textContent = '這個瀏覽器不支援朗讀。請用 Chrome 或 Safari。';
+    }
+    return t;
+  })();
 
   /* ---------- 抽屜 ---------- */
   const drawers = ['#toc', '#shelf', '#settings'].map((s) => $(s));
@@ -446,6 +621,7 @@
   }
 
   function render(b) {
+    tts.stop();
     current = { id: b.id, title: b.title };
     store.set('reader:last', b.id);
     book.className = /[一-鿿]/.test(b.html.slice(0, 4000)) ? 'cjk' : '';
@@ -458,12 +634,14 @@
     $('#tocList').querySelectorAll('button').forEach((btn) => { btn.onclick = () => { closeDrawers(); headings[+btn.dataset.i].scrollIntoView({ behavior: 'smooth' }); }; });
     $('#barTitle').textContent = b.title;
     document.title = b.title + '｜捲軸書房';
+    tts.show();
     refreshShelf();
     const pos = store.get('reader:pos:' + b.id, 0);
     requestAnimationFrame(() => { scrollTo({ top: pos * maxScroll(), behavior: 'instant' }); onScroll(); });
   }
 
   function welcome(lead) {
+    tts.stop();
     current = null; headings = [];
     $('#tocList').innerHTML = '<li class="hint">先加入一本書。</li>';
     $('#barTitle').textContent = '捲軸書房';
@@ -500,7 +678,13 @@
     if (current) { clearTimeout(saveTimer); const id = current.id; saveTimer = setTimeout(() => store.set('reader:pos:' + id, r), 300); }
   }
   addEventListener('scroll', onScroll, { passive: true });
-  book.addEventListener('click', (e) => { if (current && !e.target.closest('a,label,button')) $('#bar').classList.toggle('hidden'); });
+  book.addEventListener('click', (e) => {
+    if (!current || e.target.closest('a,label,button')) return;
+    const para = e.target.closest(tts.SELECTOR);
+    if (tts.playing && para) { tts.startAt(para); $('#bar').classList.remove('hidden'); return; }   // 朗讀中點一段，就從那段開始念
+    $('#bar').classList.toggle('hidden');
+  });
+  ['touchstart', 'wheel', 'keydown'].forEach((ev) => addEventListener(ev, () => { tts.userScrollAt = Date.now(); }, { passive: true }));
 
   refreshShelf().then(() => {
     const want = location.hash.slice(1) || store.get('reader:last', null);
