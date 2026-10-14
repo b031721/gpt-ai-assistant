@@ -252,6 +252,12 @@
   /* ---------- epub 轉 HTML ---------- */
   const resolvePath = (base, rel) => decodeURIComponent(new URL(rel, 'http://x/' + base).pathname.slice(1));
   const MIME = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp' };
+  const VERTICAL = {
+    '︐': '，', '︑': '、', '︒': '。', '︓': '：', '︔': '；', '︕': '！', '︖': '？', '︗': '〖', '︘': '〗', '︙': '…',
+    '︰': '‥', '︱': '—', '︲': '–', '︳': '＿', '︴': '＿', '︵': '（', '︶': '）', '︷': '｛', '︸': '｝', '︹': '〔', '︺': '〕',
+    '︻': '【', '︼': '】', '︽': '《', '︾': '》', '︿': '〈', '﹀': '〉', '﹁': '「', '﹂': '」', '﹃': '『', '﹄': '』', '﹇': '［', '﹈': '］',
+  };
+  const horizontal = (t) => t.replace(/[\uFE10-\uFE19\uFE30-\uFE48]/g, (c) => VERTICAL[c] || c);
   const BLOCK = new Set(['p', 'div', 'section', 'article', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'figure', 'center', 'body', 'main', 'aside', 'header', 'footer', 'nav', 'dl', 'dd', 'dt', 'hr', 'pre']);
 
   async function epubToBook(file) {
@@ -279,7 +285,7 @@
     async function inline(node, base) {
       let out = '';
       for (const c of node.childNodes) {
-        if (c.nodeType === 3) { out += esc(c.textContent.replace(/\s+/g, ' ')); continue; }
+        if (c.nodeType === 3) { out += esc(horizontal(c.textContent.replace(/\s+/g, ' '))); continue; }
         if (c.nodeType !== 1) continue;
         const tag = c.localName.toLowerCase();
         if (tag === 'br') out += '<br>';
@@ -293,22 +299,30 @@
       return out;
     }
     const hasBlock = (el) => [...el.children].some((c) => BLOCK.has(c.localName.toLowerCase()) || c.querySelector?.('p,div,h1,h2,h3,h4,h5,h6'));
+    // 一行一段：<br> 隔開的文字各自成為一個段落
+    const toParas = (h) => h.split(/(?:\s*<br>\s*)+/).map((x) => x.trim()).filter(Boolean).map((x) => `<p>${x}</p>`).join('');
     async function blocks(el, base) {
       let out = '';
-      for (const c of el.children) {
+      let run = document.createElement('div');   // 收集直接放在區塊裡、沒有包 <p> 的文字
+      const flush = async () => { if (run.childNodes.length) { out += toParas(await inline(run, base)); run = document.createElement('div'); } };
+      for (const c of [...el.childNodes]) {
+        if (c.nodeType === 3) { run.appendChild(c.cloneNode()); continue; }
+        if (c.nodeType !== 1) continue;
         const tag = c.localName.toLowerCase();
-        if (/^h[1-6]$/.test(tag)) { const t = c.textContent.replace(/\s+/g, ' ').trim(); if (t) out += `<h2>${esc(t)}</h2>`; }
+        if (!BLOCK.has(tag) && !/^h[1-6]$/.test(tag) && !(c.querySelector && c.querySelector('p,div,h1,h2,h3,h4,h5,h6'))) { run.appendChild(c.cloneNode(true)); continue; }
+        await flush();
+        if (/^h[1-6]$/.test(tag)) { const t = horizontal(c.textContent.replace(/\s+/g, ' ').trim()); if (t) out += `<h2>${esc(t)}</h2>`; }
         else if (tag === 'script' || tag === 'style' || tag === 'hr') continue;
         else if (tag === 'blockquote') out += `<blockquote>${await inline(c, base)}</blockquote>`;
-        else if (BLOCK.has(tag) && hasBlock(c)) out += await blocks(c, base);
-        else { const h = (await inline(c, base)).trim(); if (h && h !== '<br>') out += `<p>${h}</p>`; }
+        else if (hasBlock(c)) out += await blocks(c, base);
+        else out += toParas(await inline(c, base));
       }
+      await flush();
       return out;
     }
     let html = '';
     for (const item of spine) {
-      const doc = parse(await readText(item.href), 'application/xhtml+xml');
-      const body = doc.body || doc.getElementsByTagName('body')[0] || parse(await readText(item.href), 'text/html').body;
+      const body = parse(await readText(item.href), 'text/html').body;
       if (body) html += await blocks(body, item.href);
     }
     return { title: meta('title') || file.name.replace(/\.epub$/i, ''), author: meta('creator'), html };
