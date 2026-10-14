@@ -45,7 +45,7 @@ Detailed changes for each release are documented in the [release notes](https://
 
 ## 線上電子書閱讀器
 
-`/reader/` 是一個單頁的電子書閱讀器，往下捲動就能連續讀完整本書（不用按上一頁、下一頁）。它有目錄、字體大小和行距調整、米黃／白／夜間三種主題，會自動記住閱讀位置，也可以直接開啟電腦裡的 `.txt` 電子書。
+`/reader/` 是一個單頁的電子書閱讀器，往下捲動就能連續讀完整本書（不用按上一頁、下一頁）。它有目錄、字體大小和行距調整、米黃／白／夜間三種主題，會自動記住閱讀位置，也可以直接加入手機或電腦裡的 `.epub`（例如從好讀下載的 epub 檔）或 `.txt` 電子書，加入的書會存在瀏覽器裡。
 
 - 書架清單：`public/reader/books/index.json`
 - 下載《動物農莊》英文原文（公有領域）：`node scripts/fetch-animal-farm.mjs`
