@@ -327,7 +327,7 @@
       } else if (/\.(txt|text)$/i.test(f.name) || f.type.startsWith('text/')) {
         const buf = await f.arrayBuffer();
         let text = new TextDecoder('utf-8').decode(buf);
-        if ((text.match(/�/g) || []).length > 3) { try { text = new TextDecoder('big5').decode(buf); } catch {} }
+        if ((text.match(/\uFFFD/g) || []).length > 3) { try { text = new TextDecoder('big5').decode(buf); } catch {} }
         b = { title: f.name.replace(/\.[^.]+$/, ''), author: '', html: txtToHtml(text) };
       } else {
         toast('這個格式讀不了。請到好讀選「下載 epub 檔」，或使用 txt 檔。');
