@@ -82,7 +82,7 @@
   .welcome { font-family: var(--font-ui); font-size: 16px; line-height: 1.7; }
   .welcome h1 { font-family: var(--font-body); }
   .welcome ol { padding-left: 1.4em; display: grid; gap: .8em; margin: 1.5em 0; }
-  .welcome .add { display: inline-block; background: var(--seal); color: var(--on-seal); padding: 12px 22px; border-radius: 999px; font-weight: 600; cursor: pointer; }
+  .welcome .add { position: relative; overflow: hidden; display: inline-block; background: var(--seal); color: var(--on-seal); padding: 12px 22px; border-radius: 999px; font-weight: 600; cursor: pointer; }
   .welcome .note { color: var(--faint); font-size: 14px; }
   .welcome .center { text-align: center; margin: 2em 0; }
   .welcome a { color: var(--seal); }
@@ -112,8 +112,9 @@
   .seg button { padding: 6px 12px; font-size: 14px; }
   .seg button.on { background: var(--seal); color: var(--on-seal); }
   .hint { color: var(--faint); font-size: 13px; line-height: 1.6; }
-  label.file { display: block; text-align: center; padding: 12px; border: 1px dashed var(--faint); border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 14px; }
-  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  label.file { position: relative; overflow: hidden; display: block; text-align: center; padding: 12px; border: 1px dashed var(--faint); border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 14px; }
+  .picker { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 200px; }
+  #status { font-family: var(--font-ui); font-size: 14px; color: var(--faint); text-align: center; min-height: 1.5em; }
   #toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); font-family: var(--font-ui); font-size: 14px; padding: 10px 16px; border-radius: 8px; z-index: 50; max-width: calc(100vw - 32px); }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 </style>
@@ -128,7 +129,6 @@
   <button id="btnSet" aria-label="閱讀設定">Aa</button>
 </header>
 
-<input type="file" id="fileInput" class="visually-hidden" accept=".epub,.txt,application/epub+zip,text/plain">
 
 <main id="book"></main>
 
@@ -137,7 +137,7 @@
 <aside class="drawer" id="shelf" aria-label="書架">
   <h3>書架 <button data-close aria-label="關閉">✕</button></h3>
   <ul id="shelfList"></ul>
-  <label class="file" for="fileInput">＋ 加入一本書（epub 或 txt）</label>
+  <label class="file">＋ 加入一本書（epub 或 txt）<input type="file" class="picker" id="pickShelf" aria-label="加入一本書"></label>
   <p class="hint">書只存在這個瀏覽器裡，不會上傳到任何地方。換手機或清除瀏覽資料後需要重新加入。</p>
 </aside>
 <aside class="drawer" id="settings" aria-label="閱讀設定">
@@ -315,25 +315,32 @@
   }
 
   /* ---------- 加入書 ---------- */
-  $('#fileInput').onchange = async (e) => {
-    const f = e.target.files[0]; e.target.value = '';
-    if (!f) return;
+  const status = (msg) => { const el = $('#status'); if (el) el.textContent = msg; toast(msg); };
+  let busy = false;
+  async function onPick(e) {
+    if (!e.target.matches || !e.target.matches('input.picker')) return;
+    const f = e.target.files && e.target.files[0]; e.target.value = '';
+    if (!f || busy) return;
+    busy = true;
     closeDrawers();
+    status(`正在讀取「${f.name}」…`);
     try {
       let b;
-      if (/\.epub$/i.test(f.name) || f.type === 'application/epub+zip') {
-        toast('正在讀取 epub…');
+      // 有些手機給的檔名沒有副檔名，所以也看檔頭：epub 是 zip，開頭是 "PK"
+      const head = new Uint8Array(await f.slice(0, 2).arrayBuffer());
+      const isZip = head[0] === 0x50 && head[1] === 0x4b;
+      if (isZip || /\.epub$/i.test(f.name) || f.type === 'application/epub+zip') {
         b = await epubToBook(f);
-      } else if (/\.(txt|text)$/i.test(f.name) || f.type.startsWith('text/')) {
+      } else if (/\.(txt|text)$/i.test(f.name) || f.type.startsWith('text/') || !f.type) {
         const buf = await f.arrayBuffer();
         let text = new TextDecoder('utf-8').decode(buf);
         if ((text.match(/\uFFFD/g) || []).length > 3) { try { text = new TextDecoder('big5').decode(buf); } catch {} }
         b = { title: f.name.replace(/\.[^.]+$/, ''), author: '', html: txtToHtml(text) };
       } else {
-        toast('這個格式讀不了。請到好讀選「下載 epub 檔」，或使用 txt 檔。');
+        status(`「${f.name}」不是 epub 或 txt 檔。請到好讀選「下載 epub 檔」。`);
         return;
       }
-      if (!b.html.trim()) { toast('這本書讀不到文字內容。'); return; }
+      if (!b.html.trim()) { status('這本書讀不到文字內容。'); return; }
       b.id = 'b' + Date.now().toString(36);
       b.addedAt = Date.now();
       const saved = await db.put(b);
@@ -344,9 +351,13 @@
       openBook(b.id);
     } catch (err) {
       console.error(err);
-      toast('讀取失敗：' + (err.message || err));
+      status('讀取失敗：' + (err.message || err));
+    } finally {
+      busy = false;
     }
-  };
+  }
+  document.addEventListener('change', onPick);
+  document.addEventListener('input', onPick);
 
   /* ---------- 書架 ---------- */
   const memory = {};   // IndexedDB 不能用時的備援
@@ -434,7 +445,8 @@
         <li>回到這個頁面，按下面的 <b>「加入一本書」</b>，選剛剛下載的 .epub 檔。手機上通常在「下載」資料夾裡。</li>
         <li>開始往下滑。上方「目錄」可以跳章節，「Aa」可以調字體大小和紙色，閱讀位置會自動記住。</li>
       </ol>
-      <p class="center"><label class="add" for="fileInput">＋ 加入一本書</label></p>
+      <p class="center"><label class="add">＋ 加入一本書<input type="file" class="picker" id="pickWelcome" aria-label="加入一本書"></label></p>
+      <p id="status" role="status"></p>
       <p class="note">支援 epub 和 txt。好讀的 updb、prc、mobi 是給其他閱讀器用的格式，這裡讀不了，請選 epub。書只存在你這台裝置的瀏覽器裡，不會上傳。</p>
     </div>`;
     onScroll();
