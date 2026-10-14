@@ -78,6 +78,7 @@
   main h2::after { content: ""; display: block; width: 36px; height: 2px; background: var(--seal); margin: .7em auto 0; opacity: .7; }
   main blockquote { margin: 0 0 1em 1.5em; color: var(--faint); }
   main img { display: block; max-width: 100%; height: auto; margin: 1.5em auto; }
+  main img.cover { max-height: 70vh; width: auto; border-radius: 4px; box-shadow: 0 4px 18px rgba(0,0,0,.18); }
   .end { text-align: center; color: var(--faint); margin-top: 4em; text-indent: 0 !important; }
 
   /* 歡迎頁（書架空的時候）*/
@@ -489,7 +490,10 @@
     const opf = parse(await readText(opfPath), 'application/xml');
     const meta = (tag) => (opf.getElementsByTagName('dc:' + tag)[0] || opf.getElementsByTagNameNS('*', tag)[0])?.textContent.trim() || '';
     const manifest = {};
-    for (const it of opf.getElementsByTagNameNS('*', 'item')) manifest[it.getAttribute('id')] = { href: resolvePath(opfPath, it.getAttribute('href')), type: it.getAttribute('media-type') || '' };
+    for (const it of opf.getElementsByTagNameNS('*', 'item')) manifest[it.getAttribute('id')] = { href: resolvePath(opfPath, it.getAttribute('href')), type: it.getAttribute('media-type') || '', props: it.getAttribute('properties') || '' };
+    // 封面：EPUB 3 用 properties="cover-image"，EPUB 2 用 <meta name="cover" content="圖片 id">
+    const coverMeta = [...opf.getElementsByTagNameNS('*', 'meta')].find((m) => m.getAttribute('name') === 'cover');
+    const coverItem = Object.values(manifest).find((m) => /cover-image/.test(m.props)) || (coverMeta && manifest[coverMeta.getAttribute('content')]);
     const spine = [...opf.getElementsByTagNameNS('*', 'itemref')].map((r) => manifest[r.getAttribute('idref')]).filter((m) => m && /html|xml/.test(m.type));
 
     const imgCache = {};
@@ -543,6 +547,11 @@
     for (const item of spine) {
       const body = parse(await readText(item.href), 'text/html').body;
       if (body) html += await blocks(body, item.href);
+    }
+    // 內文裡沒出現過的封面，放在最前面
+    if (coverItem && /^image\//.test(coverItem.type) && !(coverItem.href in imgCache)) {
+      const src = await imgSrc('', coverItem.href);
+      if (src) html = `<img class="cover" src="${src}" alt="封面">` + html;
     }
     return { title: meta('title') || file.name.replace(/\.epub$/i, ''), author: meta('creator'), html };
   }
