@@ -114,7 +114,7 @@
   .hint { color: var(--faint); font-size: 13px; line-height: 1.6; }
   label.file { position: relative; overflow: hidden; display: block; text-align: center; padding: 12px; border: 1px dashed var(--faint); border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 14px; }
   .picker { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 200px; }
-  #status { font-family: var(--font-ui); font-size: 14px; color: var(--faint); text-align: center; min-height: 1.5em; }
+  #status { font-family: var(--font-ui); font-size: 15px; line-height: 1.7; color: var(--ink); text-align: center; min-height: 1.5em; }
   #toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); font-family: var(--font-ui); font-size: 14px; padding: 10px 16px; border-radius: 8px; z-index: 50; max-width: calc(100vw - 32px); }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 </style>
@@ -358,6 +358,25 @@
   }
   document.addEventListener('change', onPick);
   document.addEventListener('input', onPick);
+
+  // 有些 App 內建的瀏覽器（例如 Claude App 的預覽畫面）點了檔案欄位不會打開選檔畫面。
+  // 選檔畫面一打開，頁面就會失去焦點；1.5 秒內都沒有，就提示改用一般瀏覽器開啟。
+  let pickTimer;
+  const cancelPickHint = () => clearTimeout(pickTimer);
+  document.addEventListener('click', (e) => {
+    if (!e.target.matches || !e.target.matches('input.picker')) return;
+    cancelPickHint();
+    pickTimer = setTimeout(() => {
+      if (document.hasFocus() && !document.hidden) {
+        const msg = '沒有跳出選檔畫面嗎？你可能是在 App 裡面打開這個網頁，它不支援選擇檔案。請按右上角的分享按鈕複製連結，貼到 Chrome 或 Safari 打開，再按一次「加入一本書」。';
+        const el = $('#status');
+        if (el) el.textContent = msg; else toast(msg);
+      }
+    }, 1500);
+  }, true);
+  addEventListener('blur', cancelPickHint);
+  document.addEventListener('visibilitychange', cancelPickHint);
+  document.addEventListener('change', cancelPickHint, true);
 
   /* ---------- 書架 ---------- */
   const memory = {};   // IndexedDB 不能用時的備援
