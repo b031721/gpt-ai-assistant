@@ -792,7 +792,7 @@
       }
       for (const raw of lines) {
         const plain = raw.replace(/<[^>]+>/g, '').trim();
-        if (!plain) { push(); continue; }
+        if (!plain) { push(); if (/<img/.test(raw)) out.push(`<p>${raw.trim()}</p>`); continue; }   // 只有插圖的段落要留著
         if (/^[—–\-_=＝─━]{6,}$/.test(plain)) { push(); continue; }   // 分隔線
         if (plain.length <= 40 && CHAPTER_RE.test(plain.replace(/\u3000+/g, ' '))) { push(); out.push(`<h2>${esc(plain.replace(/\u3000+/g, '　'))}</h2>`); continue; }
         if (/^\u3000/.test(raw) && cur) push();
@@ -960,7 +960,7 @@
       try {
         if (/\.epub$/i.test(entry.file)) {
           // 內建的 epub：第一次打開時下載並轉換，之後直接用存在手機裡的那份
-          const cached = memory[id] || await db.getPos('cache2:' + id);
+          const cached = memory[id] || await db.getPos('cache3:' + id);
           if (cached && cached.html) b = { ...entry, html: cached.html };
           else {
             toast(tr('正在打開《{0}》…', entry.title));
@@ -969,7 +969,7 @@
             const parsed = await epubToBook(await r.blob());
             b = { ...entry, html: parsed.html };
             memory[id] = b;
-            db.setPos('cache2:' + id, { html: parsed.html });
+            db.setPos('cache3:' + id, { html: parsed.html });
           }
         } else {
           const r = await fetch('books/' + entry.file, { cache: 'no-cache' });
@@ -1437,7 +1437,7 @@ Surrounding text: ${context}`;
   /* ---------- 自動更新到最新版 ---------- */
   // 網站每次更新都會產生新的 version.json。剛打開時發現有新版就直接換成新版；
   // 正在閱讀時只在上方顯示「更新」按鈕，不打斷閱讀。換版前先存好閱讀位置。
-  const APP_VERSION = '3b8ac033e6';
+  const APP_VERSION = '1e7ef87dee';
   const updater = (() => {
     let latest = null, checking = false;
     const openedAt = Date.now();
