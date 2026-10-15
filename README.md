@@ -53,3 +53,7 @@ Detailed changes for each release are documented in the [release notes](https://
 ### 用 GitHub Pages 免費上線
 
 `docs/index.html` 是閱讀器的複本，給 GitHub Pages 用（改 `public/reader/index.html` 後要再複製一份過去）。到 GitHub 專案的 Settings → Pages，Source 選「Deploy from a branch」，Branch 選這個分支、資料夾選 `/docs`，存檔後網址會是 `https://<帳號>.github.io/gpt-ai-assistant/`，任何人打開都不用登入。
+
+### 內建好書
+
+`docs/books/` 放著幾本公版書（古騰堡計畫），打開網站就能直接讀。書單在 `scripts/books.json`，改了之後推上 GitHub，`.github/workflows/fetch-books.yml` 會自動下載、檢查書名，並把 epub 和 `index.json` 提交回來。

@@ -701,7 +701,7 @@
   addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawers(); });
 
   /* ---------- txt 轉 HTML ---------- */
-  const CHAPTER_RE = /^\s*(chapter\s+[ivxlcdm\d]+\.?.*|第[一二三四五六七八九十百千零〇兩\d]+[章回節卷部篇].{0,30}|[序楔]子|序[章言幕曲]?|[代譯自原]序|作者序|前言|導[讀言]|引言|尾聲|終章|後記|跋|附錄.*|作者年表|年表|preface.*|appendix.*|epilogue|prologue)\s*$/i;
+  const CHAPTER_RE = /^\s*([\u4e00-\u9fff]{1,4}第[一二三四五六七八九十]{1,3}|chapter\s+[ivxlcdm\d]+\.?.*|第[一二三四五六七八九十百千零〇○兩\d０-９]+[章回節卷部篇].{0,30}|[序楔]子|序[章言幕曲]?|[代譯自原]序|作者序|前言|導[讀言]|引言|尾聲|終章|後記|跋|附錄.*|作者年表|年表|preface.*|appendix.*|epilogue|prologue)\s*$/i;
   function txtToHtml(text) {
     text = text.replace(/\r\n?/g, '\n').replace(/^﻿/, '');
     // 中文 txt 常常一行一段、沒有空行
@@ -725,6 +725,7 @@
     '︰': '‥', '︱': '—', '︲': '–', '︳': '＿', '︴': '＿', '︵': '（', '︶': '）', '︷': '｛', '︸': '｝', '︹': '〔', '︺': '〕',
     '︻': '【', '︼': '】', '︽': '《', '︾': '》', '︿': '〈', '﹀': '〉', '﹁': '「', '﹂': '」', '﹃': '『', '﹄': '』', '﹇': '［', '﹈': '］',
   };
+  const LS = '\u2028';   // 原文換行的記號
   const horizontal = (t) => t.replace(/[\uFE10-\uFE19\uFE30-\uFE48]/g, (c) => VERTICAL[c] || c);
   const BLOCK = new Set(['p', 'div', 'section', 'article', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'figure', 'center', 'body', 'main', 'aside', 'header', 'footer', 'nav', 'dl', 'dd', 'dt', 'hr', 'pre']);
 
@@ -756,7 +757,7 @@
     async function inline(node, base) {
       let out = '';
       for (const c of node.childNodes) {
-        if (c.nodeType === 3) { out += esc(horizontal(c.textContent.replace(/\s+/g, ' '))); continue; }
+        if (c.nodeType === 3) { out += esc(horizontal(c.textContent.replace(/[ \t\f\v]*\r?\n[ \t\f\v]*/g, LS).replace(/[ \t\f\v]+/g, ' '))); continue; }
         if (c.nodeType !== 1) continue;
         const tag = c.localName.toLowerCase();
         if (tag === 'br') out += '<br>';
@@ -771,7 +772,28 @@
     }
     const hasBlock = (el) => [...el.children].some((c) => BLOCK.has(c.localName.toLowerCase()) || c.querySelector?.('p,div,h1,h2,h3,h4,h5,h6'));
     // 一行一段：<br> 隔開的文字各自成為一個段落
-    const toParas = (h) => h.split(/(?:\s*<br>\s*)+/).map((x) => x.trim()).filter(Boolean).map((x) => `<p>${x}</p>`).join('');
+    // 有些書（例如古騰堡的《紅樓夢》）是硬斷行的純文字：段落以全形空白開頭，章回標題夾在中間的某一行
+    const linesToBlocks = (seg) => {
+      const out = []; let cur = '';
+      const push = () => { const x = cur.trim(); if (x) out.push(`<p>${x}</p>`); cur = ''; };
+      const lines = [];
+      for (const r of seg.split(LS)) {
+        const m = !/</.test(r) && r.match(/^(.*[。．！？」』])[\s\u3000]*(第[一二三四五六七八九十百千零〇○兩\d０-９]+[回章].{0,30})$/);
+        if (m && CHAPTER_RE.test(m[2].replace(/\u3000+/g, ' '))) lines.push(m[1], m[2]); else lines.push(r);
+      }
+      for (const raw of lines) {
+        const plain = raw.replace(/<[^>]+>/g, '').trim();
+        if (!plain) { push(); continue; }
+        if (/^[—–\-_=＝─━]{6,}$/.test(plain)) { push(); continue; }   // 分隔線
+        if (plain.length <= 40 && CHAPTER_RE.test(plain.replace(/\u3000+/g, ' '))) { push(); out.push(`<h2>${esc(plain.replace(/\u3000+/g, '　'))}</h2>`); continue; }
+        if (/^\u3000/.test(raw) && cur) push();
+        const line = raw.replace(/^[\u3000 ]+/, '').trim();
+        cur = cur ? cur + (/[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]$/.test(cur) || /^[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]/.test(line) ? '' : ' ') + line : line;
+      }
+      push();
+      return out.join('');
+    };
+    const toParas = (h) => h.split(/(?:\s*<br>\s*)+/).map((x) => x.trim()).filter(Boolean).map(linesToBlocks).join('');
     async function blocks(el, base) {
       let out = '';
       let run = document.createElement('div');   // 收集直接放在區塊裡、沒有包 <p> 的文字
@@ -782,9 +804,17 @@
         const tag = c.localName.toLowerCase();
         if (!BLOCK.has(tag) && !/^h[1-6]$/.test(tag) && !(c.querySelector && c.querySelector('p,div,h1,h2,h3,h4,h5,h6'))) { run.appendChild(c.cloneNode(true)); continue; }
         await flush();
-        if (/^h[1-6]$/.test(tag)) { const t = horizontal(c.textContent.replace(/\s+/g, ' ').trim()); if (t) out += `<h2>${esc(t)}</h2>`; }
+        if (c.id === 'pg-header' || c.id === 'pg-machine-header' || c.id === 'pg-start-separator') continue;   // 古騰堡開頭的英文版權說明不顯示（書末的授權說明保留）
+        if (/^h[1-6]$/.test(tag)) { c.querySelectorAll('br').forEach((br) => br.replaceWith(' ')); const t = horizontal(c.textContent.replace(/\s+/g, ' ').trim()); if (t && !/PROJECT GUTENBERG/i.test(t)) out += `<h2>${esc(t)}</h2>`; else if (t) out += `<p>${esc(t)}</p>`; }
         else if (tag === 'script' || tag === 'style' || tag === 'hr') continue;
-        else if (tag === 'blockquote') out += `<blockquote>${await inline(c, base)}</blockquote>`;
+        else if (tag === 'table') {
+          for (const tr of c.querySelectorAll('tr')) {
+            const cells = [];
+            for (const td of tr.children) { const h = (await inline(td, base)).split(LS).join(' ').trim(); if (h) cells.push(h); }
+            if (cells.length) out += `<p>${cells.join(' ')}</p>`;
+          }
+        }
+        else if (tag === 'blockquote') out += `<blockquote>${(await inline(c, base)).split(LS).join(' ')}</blockquote>`;
         else if (hasBlock(c)) out += await blocks(c, base);
         else out += toParas(await inline(c, base));
       }
@@ -921,7 +951,7 @@
       try {
         if (/\.epub$/i.test(entry.file)) {
           // 內建的 epub：第一次打開時下載並轉換，之後直接用存在手機裡的那份
-          const cached = memory[id] || await db.getPos('cache:' + id);
+          const cached = memory[id] || await db.getPos('cache2:' + id);
           if (cached && cached.html) b = { ...entry, html: cached.html };
           else {
             toast(tr('正在打開《{0}》…', entry.title));
@@ -930,7 +960,7 @@
             const parsed = await epubToBook(await r.blob());
             b = { ...entry, html: parsed.html };
             memory[id] = b;
-            db.setPos('cache:' + id, { html: parsed.html });
+            db.setPos('cache2:' + id, { html: parsed.html });
           }
         } else {
           const r = await fetch('books/' + entry.file, { cache: 'no-cache' });
@@ -974,6 +1004,10 @@
       run.push(h);
     });
     flushRun();
+    // 同一個章節名出現好幾次（例如書本自己的目錄、插圖說明），只留最後一個，也就是正文的那個
+    const seen = new Map();
+    [...book.querySelectorAll('h2')].forEach((h) => { const k = h.textContent.replace(/\s+/g, ''); if (seen.has(k)) seen.get(k).push(h); else seen.set(k, [h]); });
+    seen.forEach((list) => list.slice(0, -1).forEach((h) => { const p = document.createElement('p'); p.textContent = h.textContent; p.className = 'toc-line'; h.replaceWith(p); }));
   }
 
   function render(b) { console.log('RENDER', b.id, (b.html||'').length);
