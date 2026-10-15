@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+import urllib.parse
 import urllib.request
 import zipfile
 
@@ -31,13 +32,29 @@ def epub_title(data):
     return m.group(1).strip() if m else ''
 
 
+def search_ids(b):
+    """用 Gutendex（古騰堡書目的公開搜尋服務）找書號，回傳書名符合的前幾筆。"""
+    q = urllib.parse.quote(b.get('search') or b['title'])
+    try:
+        data = json.loads(get(f'https://gutendex.com/books/?search={q}&languages={b["lang"]}'))
+    except Exception as e:  # noqa: BLE001
+        print(f'  {b["id"]}: search failed: {e}')
+        return []
+    ids = [r['id'] for r in data.get('results', []) if b['expect'] in r.get('title', '')]
+    print(f'  {b["id"]}: search {b.get("search") or b["title"]!r} -> {ids[:5]}')
+    return ids[:5]
+
+
 def main():
     books = json.load(open(os.path.join(ROOT, 'scripts', 'books.json'), encoding='utf-8'))
     os.makedirs(OUT, exist_ok=True)
     shelf = []
     for b in books:
         saved = False
-        for gid in b['gutenberg']:
+        ids = list(b.get('gutenberg', []))
+        if not ids:
+            ids = search_ids(b)
+        for gid in ids:
             for url in (f'https://www.gutenberg.org/cache/epub/{gid}/pg{gid}-images.epub',
                         f'https://www.gutenberg.org/cache/epub/{gid}/pg{gid}.epub'):
                 try:
@@ -58,6 +75,24 @@ def main():
                 break
             if saved:
                 break
+        if not saved and b.get('gutenberg'):
+            for gid in search_ids(b):   # 書號不對時改用搜尋
+                if gid in b['gutenberg']:
+                    continue
+                try:
+                    data = get(f'https://www.gutenberg.org/cache/epub/{gid}/pg{gid}-images.epub')
+                    title = epub_title(data)
+                except Exception as e:  # noqa: BLE001
+                    print(f'  {b["id"]}: #{gid} failed: {e}')
+                    continue
+                if b['expect'] in title:
+                    with open(os.path.join(OUT, b['id'] + '.epub'), 'wb') as f:
+                        f.write(data)
+                    shelf.append({'id': b['id'], 'title': b['title'], 'author': b['author'], 'lang': b['lang'],
+                                  'file': b['id'] + '.epub', 'source': f'https://www.gutenberg.org/ebooks/{gid}'})
+                    saved = True
+                    print(f'  {b["id"]}: found by search #{gid}')
+                    break
         if not saved:
             print(f'!! {b["id"]}: no matching download')
     with open(os.path.join(OUT, 'index.json'), 'w', encoding='utf-8') as f:
