@@ -119,7 +119,7 @@ def main():
                 with open(os.path.join(OUT, b['id'] + '.epub'), 'wb') as f:
                     f.write(small)
                 shelf.append({'id': b['id'], 'title': b['title'], 'author': b['author'], 'lang': b['lang'],
-                              'file': b['id'] + '.epub', 'source': f'https://www.gutenberg.org/ebooks/{gid}'})
+                              'file': b['id'] + '.epub', 'tag': b.get('tag', ''), 'source': f'https://www.gutenberg.org/ebooks/{gid}'})
                 saved = True
                 break
             if saved:
@@ -138,7 +138,7 @@ def main():
                     with open(os.path.join(OUT, b['id'] + '.epub'), 'wb') as f:
                         f.write(shrink(data))
                     shelf.append({'id': b['id'], 'title': b['title'], 'author': b['author'], 'lang': b['lang'],
-                                  'file': b['id'] + '.epub', 'source': f'https://www.gutenberg.org/ebooks/{gid}'})
+                                  'file': b['id'] + '.epub', 'tag': b.get('tag', ''), 'source': f'https://www.gutenberg.org/ebooks/{gid}'})
                     saved = True
                     print(f'  {b["id"]}: found by search #{gid}')
                     break

@@ -216,7 +216,8 @@
     "title": "孫子兵法",
     "author": "孫武",
     "expect": "孫子",
-    "search": "孫子兵法"
+    "search": "孫子兵法",
+    "tag": "strategy"
   },
   {
     "id": "zhuangzi",
@@ -340,5 +341,72 @@
     "author": "佚名",
     "expect": "三十六計",
     "search": "三十六計"
+  },
+  {
+    "id": "dongzhou",
+    "lang": "zh",
+    "tag": "strategy",
+    "title": "東周列國志",
+    "author": "馮夢龍、蔡元放",
+    "expect": "列國",
+    "search": "東周列國志"
+  },
+  {
+    "id": "suitang",
+    "lang": "zh",
+    "tag": "strategy",
+    "title": "隋唐演義",
+    "author": "褚人穫",
+    "expect": "隋唐",
+    "search": "隋唐演義"
+  },
+  {
+    "id": "zhanguoce",
+    "lang": "zh",
+    "tag": "strategy",
+    "title": "戰國策",
+    "author": "劉向 編",
+    "expect": "戰國策",
+    "search": "戰國策"
+  },
+  {
+    "id": "hanfeizi",
+    "lang": "zh",
+    "tag": "strategy",
+    "title": "韓非子",
+    "author": "韓非",
+    "expect": "韓非",
+    "search": "韓非子"
+  },
+  {
+    "id": "guiguzi",
+    "lang": "zh",
+    "tag": "strategy",
+    "title": "鬼谷子",
+    "author": "鬼谷子",
+    "expect": "鬼谷",
+    "search": "鬼谷子"
+  },
+  {
+    "id": "prince",
+    "lang": "en",
+    "tag": "strategy",
+    "title": "The Prince",
+    "author": "Niccolò Machiavelli",
+    "expect": "Prince",
+    "gutenberg": [
+      1232
+    ]
+  },
+  {
+    "id": "artofwar",
+    "lang": "en",
+    "tag": "strategy",
+    "title": "The Art of War",
+    "author": "Sun Tzu (tr. Lionel Giles)",
+    "expect": "Art of War",
+    "gutenberg": [
+      132
+    ]
   }
 ]
