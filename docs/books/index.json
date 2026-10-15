@@ -9,6 +9,14 @@
       "source": "https://www.gutenberg.org/ebooks/11"
     },
     {
+      "id": "gatsby",
+      "title": "The Great Gatsby",
+      "author": "F. Scott Fitzgerald",
+      "lang": "en",
+      "file": "gatsby.epub",
+      "source": "https://www.gutenberg.org/ebooks/64317"
+    },
+    {
       "id": "xiyouji",
       "title": "西遊記",
       "author": "吳承恩",
