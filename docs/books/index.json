@@ -17,6 +17,110 @@
       "source": "https://www.gutenberg.org/ebooks/64317"
     },
     {
+      "id": "pride",
+      "title": "Pride and Prejudice",
+      "author": "Jane Austen",
+      "lang": "en",
+      "file": "pride.epub",
+      "source": "https://www.gutenberg.org/ebooks/1342"
+    },
+    {
+      "id": "sherlock",
+      "title": "The Adventures of Sherlock Holmes",
+      "author": "Arthur Conan Doyle",
+      "lang": "en",
+      "file": "sherlock.epub",
+      "source": "https://www.gutenberg.org/ebooks/1661"
+    },
+    {
+      "id": "frankenstein",
+      "title": "Frankenstein",
+      "author": "Mary Shelley",
+      "lang": "en",
+      "file": "frankenstein.epub",
+      "source": "https://www.gutenberg.org/ebooks/84"
+    },
+    {
+      "id": "peterpan",
+      "title": "Peter Pan",
+      "author": "J. M. Barrie",
+      "lang": "en",
+      "file": "peterpan.epub",
+      "source": "https://www.gutenberg.org/ebooks/16"
+    },
+    {
+      "id": "oz",
+      "title": "The Wonderful Wizard of Oz",
+      "author": "L. Frank Baum",
+      "lang": "en",
+      "file": "oz.epub",
+      "source": "https://www.gutenberg.org/ebooks/55"
+    },
+    {
+      "id": "carol",
+      "title": "A Christmas Carol",
+      "author": "Charles Dickens",
+      "lang": "en",
+      "file": "carol.epub",
+      "source": "https://www.gutenberg.org/ebooks/46"
+    },
+    {
+      "id": "littlewomen",
+      "title": "Little Women",
+      "author": "Louisa May Alcott",
+      "lang": "en",
+      "file": "littlewomen.epub",
+      "source": "https://www.gutenberg.org/ebooks/37106"
+    },
+    {
+      "id": "anne",
+      "title": "Anne of Green Gables",
+      "author": "L. M. Montgomery",
+      "lang": "en",
+      "file": "anne.epub",
+      "source": "https://www.gutenberg.org/ebooks/45"
+    },
+    {
+      "id": "tomsawyer",
+      "title": "The Adventures of Tom Sawyer",
+      "author": "Mark Twain",
+      "lang": "en",
+      "file": "tomsawyer.epub",
+      "source": "https://www.gutenberg.org/ebooks/74"
+    },
+    {
+      "id": "treasure",
+      "title": "Treasure Island",
+      "author": "Robert Louis Stevenson",
+      "lang": "en",
+      "file": "treasure.epub",
+      "source": "https://www.gutenberg.org/ebooks/120"
+    },
+    {
+      "id": "junglebook",
+      "title": "The Jungle Book",
+      "author": "Rudyard Kipling",
+      "lang": "en",
+      "file": "junglebook.epub",
+      "source": "https://www.gutenberg.org/ebooks/236"
+    },
+    {
+      "id": "secretgarden",
+      "title": "The Secret Garden",
+      "author": "Frances Hodgson Burnett",
+      "lang": "en",
+      "file": "secretgarden.epub",
+      "source": "https://www.gutenberg.org/ebooks/113"
+    },
+    {
+      "id": "aesop",
+      "title": "Aesop's Fables",
+      "author": "Aesop",
+      "lang": "en",
+      "file": "aesop.epub",
+      "source": "https://www.gutenberg.org/ebooks/11339"
+    },
+    {
       "id": "xiyouji",
       "title": "西遊記",
       "author": "吳承恩",
@@ -55,6 +159,70 @@
       "lang": "zh",
       "file": "lunyu.epub",
       "source": "https://www.gutenberg.org/ebooks/23839"
+    },
+    {
+      "id": "daodejing",
+      "title": "道德經",
+      "author": "老子",
+      "lang": "zh",
+      "file": "daodejing.epub",
+      "source": "https://www.gutenberg.org/ebooks/7337"
+    },
+    {
+      "id": "sunzi",
+      "title": "孫子兵法",
+      "author": "孫武",
+      "lang": "zh",
+      "file": "sunzi.epub",
+      "source": "https://www.gutenberg.org/ebooks/23864"
+    },
+    {
+      "id": "zhuangzi",
+      "title": "莊子",
+      "author": "莊周",
+      "lang": "zh",
+      "file": "zhuangzi.epub",
+      "source": "https://www.gutenberg.org/ebooks/23913"
+    },
+    {
+      "id": "mengzi",
+      "title": "孟子",
+      "author": "孟子",
+      "lang": "zh",
+      "file": "mengzi.epub",
+      "source": "https://www.gutenberg.org/ebooks/24178"
+    },
+    {
+      "id": "sanzijing",
+      "title": "三字經",
+      "author": "王應麟",
+      "lang": "zh",
+      "file": "sanzijing.epub",
+      "source": "https://www.gutenberg.org/ebooks/12479"
+    },
+    {
+      "id": "liaozhai",
+      "title": "聊齋誌異",
+      "author": "蒲松齡",
+      "lang": "zh",
+      "file": "liaozhai.epub",
+      "source": "https://www.gutenberg.org/ebooks/51828"
+    },
+    {
+      "id": "rulin",
+      "title": "儒林外史",
+      "author": "吳敬梓",
+      "lang": "zh",
+      "file": "rulin.epub",
+      "source": "https://www.gutenberg.org/ebooks/24032"
+    },
+    {
+      "id": "laocan",
+      "title": "老殘遊記",
+      "author": "劉鶚",
+      "lang": "zh",
+      "file": "laocan.epub",
+      "source": "https://www.gutenberg.org/ebooks/23850"
     }
   ]
 }
