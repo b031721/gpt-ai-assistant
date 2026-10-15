@@ -308,5 +308,37 @@
     "author": "洪應明",
     "expect": "菜根",
     "search": "菜根譚"
+  },
+  {
+    "id": "qianziwen",
+    "lang": "zh",
+    "title": "千字文",
+    "author": "周興嗣",
+    "expect": "千字文",
+    "search": "千字文"
+  },
+  {
+    "id": "shishuo",
+    "lang": "zh",
+    "title": "世說新語",
+    "author": "劉義慶",
+    "expect": "世說新語",
+    "search": "世說新語"
+  },
+  {
+    "id": "dizigui",
+    "lang": "zh",
+    "title": "弟子規",
+    "author": "李毓秀",
+    "expect": "弟子規",
+    "search": "弟子規"
+  },
+  {
+    "id": "sanshiliuji",
+    "lang": "zh",
+    "title": "三十六計",
+    "author": "佚名",
+    "expect": "三十六計",
+    "search": "三十六計"
   }
 ]
