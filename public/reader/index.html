@@ -177,7 +177,7 @@
   <h3>書架 <button data-close aria-label="關閉">✕</button></h3>
   <ul id="shelfList"></ul>
   <label class="file">＋ 加入一本書（epub 或 txt）<input type="file" class="picker" id="pickShelf" aria-label="加入一本書"></label>
-  <p class="hint">在 Claude 網頁裡打開時，加入的書和閱讀位置會備份到你的 Claude 帳號（只有你看得到）。清除瀏覽資料、換手機或用電腦打開，書都還在。</p>
+  <p class="hint">書存在這支手機的瀏覽器裡，不會上傳給別人。清除瀏覽資料後要重新加入。（在 Claude 網頁裡打開時，還會備份到你的 Claude 帳號。）</p>
 </aside>
 <aside class="drawer" id="settings" aria-label="閱讀設定">
   <h3>閱讀設定 <button data-close aria-label="關閉">✕</button></h3>
@@ -898,7 +898,7 @@
       </ol>
       <p class="center"><label class="add">＋ 加入一本書<input type="file" class="picker" id="pickWelcome" aria-label="加入一本書"></label></p>
       <p id="status" role="status"></p>
-      <p class="note">支援 epub 和 txt。好讀的 updb、prc、mobi 是給其他閱讀器用的格式，這裡讀不了，請選 epub。加入的書會備份到你的 Claude 帳號，只有你看得到。</p>
+      <p class="note">支援 epub 和 txt。好讀的 updb、prc、mobi 是給其他閱讀器用的格式，這裡讀不了，請選 epub。書存在你這支手機的瀏覽器裡，不會上傳給別人。</p>
     </div>`;
     onScroll();
   }
@@ -911,6 +911,19 @@
     const ready = (window.claude && window.claude.use)
       ? window.claude.use('sample').then((f) => { sampleFn = f; }).catch(() => { sampleFn = null; })
       : Promise.resolve().then(() => { sampleFn = null; });
+    // 直接問 Google 翻譯（網頁版用的免費介面），整理成「翻譯 + 各詞性意思」
+    async function googleDirect(q, signal) {
+      const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-TW&hl=zh-TW&dt=t&dt=bd&q=' + encodeURIComponent(q);
+      const r = await fetch(url, { signal });
+      if (!r.ok) return '';
+      const data = await r.json();
+      if (!Array.isArray(data) || !Array.isArray(data[0])) return '';
+      const lines = [data[0].map((seg) => (Array.isArray(seg) ? seg[0] || '' : '')).join('').trim()];
+      if (Array.isArray(data[1])) {
+        data[1].slice(0, 4).forEach((e) => { if (Array.isArray(e) && Array.isArray(e[1])) lines.push((e[0] ? e[0] + '：' : '') + e[1].slice(0, 5).join('、')); });
+      }
+      return lines.filter(Boolean).join('\n');
+    }
     const isEnglish = (t) => /[A-Za-z]/.test(t) && (t.match(/[\u3400-\u9fff]/g) || []).length < t.length * 0.2;
     function hide() { box.hidden = true; if (ctl) ctl.abort(); ctl = null; lastText = ''; }
     $('#transClose').onclick = hide;
@@ -938,11 +951,16 @@
         const my = ctl;
         out.className = 'out wait'; out.textContent = '翻譯中…';
         try {
-          const r = await fetch('api/translate?q=' + encodeURIComponent(text), { signal: my.signal });
-          const j = r.ok ? await r.json() : null;
+          let t = '';
+          try { t = await googleDirect(text, my.signal); } catch (e) { if (e && e.name === 'AbortError') throw e; }
+          if (!t) {   // 手機直接連不到時，改請自己的伺服器代問（有架伺服器時才有）
+            const r = await fetch('api/translate?q=' + encodeURIComponent(text), { signal: my.signal });
+            const j = r.ok ? await r.json() : null;
+            t = j && j.text;
+          }
           if (ctl !== my) return;
-          if (!j || !j.text) throw new Error('no text');
-          out.className = 'out'; out.textContent = j.text;
+          if (!t) throw new Error('no text');
+          out.className = 'out'; out.textContent = t;
         } catch (e) {
           if (ctl !== my || (e && e.name === 'AbortError')) return;
           out.className = 'out wait';
