@@ -16,7 +16,7 @@
     --sheet: #fbf9f3; --seal: #a33a26; --on-seal: #ffffff;
     --font-body: "Noto Serif TC", "Songti TC", "PMingLiU", Georgia, serif;
     --font-ui: system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
-    --size: 19px; --lead: 1.9;
+    --size: 19px; --lead: 1.9; --hl: rgba(255, 213, 74, .55);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -156,6 +156,21 @@
   #trans .tools a { color: var(--seal); }
   #trans .x { position: absolute; top: 6px; right: 6px; width: 32px; height: 32px; border-radius: 8px; color: var(--faint); }
   #trans .head { display: flex; gap: 8px; align-items: center; padding-right: 30px; }
+  /* 畫黃線 */
+  main mark.hl { background: var(--hl); color: inherit; border-radius: 2px; padding: 0 .05em; }
+  :root[data-paper="night"] main mark.hl, :root[data-theme="dark"]:not([data-paper="sepia"]):not([data-paper="white"]) main mark.hl { background: rgba(255, 200, 60, .32); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not([data-paper="sepia"]):not([data-paper="white"]) main mark.hl { background: rgba(255, 200, 60, .32); } }
+  #markBar {
+    position: fixed; z-index: 29; left: 50%; transform: translateX(-50%); top: calc(62px + env(safe-area-inset-top, 0px));
+    display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: var(--sheet); border: 1px solid var(--rule);
+    box-shadow: 0 4px 18px rgba(0,0,0,.2); font-family: var(--font-ui);
+  }
+  #markBar button { height: 40px; padding: 0 16px; border-radius: 999px; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; }
+  #markBar .yellow { background: #ffd54a; color: #3a2e00; font-weight: 600; }
+  #markBar .remove { color: var(--seal); }
+  .drawer h3.sub-head { margin-top: 24px; }
+  #markList .snip { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #markList .dot { display: inline-block; width: .7em; height: .7em; border-radius: 2px; background: #ffd54a; margin-right: 6px; vertical-align: middle; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 </style>
 </head>
@@ -173,7 +188,8 @@
 <main id="book"></main>
 
 <div id="scrim"></div>
-<aside class="drawer" id="toc" aria-label="目錄"><h3>目錄 <button data-close aria-label="關閉">✕</button></h3><ol id="tocList"></ol></aside>
+<aside class="drawer" id="toc" aria-label="目錄"><h3>目錄 <button data-close aria-label="關閉">✕</button></h3><ol id="tocList"></ol>
+  <h3 class="sub-head">我的黃線標記</h3><ol id="markList"></ol></aside>
 <aside class="drawer" id="shelf" aria-label="書架">
   <h3>書架 <button data-close aria-label="關閉">✕</button></h3>
   <ul id="shelfList"></ul>
@@ -212,6 +228,10 @@
   <button class="ctl" id="ttsNext" aria-label="下一段"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
   <button class="ctl rate" id="ttsRate" aria-label="語速"></button>
   <button class="ctl" id="ttsStop" aria-label="停止朗讀"><svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg></button>
+</div>
+<div id="markBar" hidden role="toolbar" aria-label="標記">
+  <button class="yellow" id="markAdd">畫黃線</button>
+  <button class="remove" id="markDel" hidden>移除這個黃線</button>
 </div>
 <section id="trans" hidden aria-live="polite" aria-label="翻譯">
   <button class="x" id="transClose" aria-label="關閉翻譯">✕</button>
@@ -332,12 +352,19 @@
       c.list = c.list.filter((x) => x.id !== id);
     };
     // 閱讀位置：最多每 5 秒寫一次，離開頁面時馬上寫
+    let queue = Promise.resolve();
+    const enqueue = (fn) => (queue = queue.then(fn).catch(() => {}));
+    c.saveMarks = (id, v) => {
+      if (!c.ok || !c.has(id)) return;
+      enqueue(async () => { await col().doc(id).update({ marks: v }); const e = c.list.find((x) => x.id === id); if (e) e.marks = v; });
+    };
+    c.marksOf = (id) => (c.list.find((x) => x.id === id) || {}).marks || null;
     let pending = null, timer = null, writing = false;
     async function flush() {
       timer = null;
       if (!pending || writing || !c.ok) return;
       const { id, a } = pending; pending = null; writing = true;
-      try { await col().doc(id).update({ pos: a }); const e = c.list.find((x) => x.id === id); if (e) e.pos = a; } catch {}
+      await enqueue(async () => { await col().doc(id).update({ pos: a }); const e = c.list.find((x) => x.id === id); if (e) e.pos = a; });
       writing = false;
       if (pending) timer = setTimeout(flush, 5000);
     }
@@ -814,6 +841,8 @@
     book.className = /[一-鿿]/.test(b.html.slice(0, 4000)) ? 'cjk' : '';
     book.innerHTML = `<h1>${esc(b.title)}</h1>${b.author ? `<div class="byline">${esc(b.author)}</div>` : ''}${b.html}<p class="end">— 全書完 —</p>`;
     markChapters();
+    marks.hide();
+    marks.load(b.id);
     headings = [...book.querySelectorAll('h2')];
     headings.forEach((h, i) => { h.id = 'ch' + i; });
     $('#tocList').innerHTML = headings.length
@@ -883,6 +912,7 @@
 
   function welcome(lead) {
     tts.stop();
+    marks.hide(); $('#markList').innerHTML = '';
     current = null; headings = [];
     $('#tocList').innerHTML = '<li class="hint">先加入一本書。</li>';
     $('#barTitle').textContent = '捲軸書房';
@@ -1026,6 +1056,111 @@
     return { hide, get open() { return !box.hidden; } };
   })();
 
+  /* ---------- 畫黃線標記 ---------- */
+  // 每個標記記成「從第幾段第幾個字，到第幾段第幾個字」，跟字體大小無關
+  const marks = (() => {
+    const t = { list: [] };
+    let bookId = null, savedRange = null, selectedId = null;
+    const BLOCK_SEL = 'h1, .byline, h2, p, blockquote';
+    const textBlocks = () => [...book.querySelectorAll(BLOCK_SEL)];
+    const blockOf = (node) => { const el = node && (node.nodeType === 1 ? node : node.parentElement); return el ? el.closest(BLOCK_SEL) : null; };
+    function offsetIn(block, node, off) { const r = document.createRange(); r.selectNodeContents(block); r.setEnd(node, off); return r.toString().length; }
+    function wrap(block, s, e, id) {
+      const w = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+      const parts = []; let pos = 0;
+      for (let n = w.nextNode(); n; n = w.nextNode()) {
+        const a = Math.max(s, pos), z = Math.min(e, pos + n.data.length);
+        if (a < z) parts.push([n, a - pos, z - pos]);
+        pos += n.data.length;
+      }
+      parts.forEach(([n, a, z]) => {
+        let x = n;
+        if (a > 0) x = x.splitText(a);
+        if (z - a < x.data.length) x.splitText(z - a);
+        const m = document.createElement('mark'); m.className = 'hl'; m.dataset.h = id;
+        x.replaceWith(m); m.appendChild(x);
+      });
+    }
+    function paint(m) {
+      const bs = textBlocks();
+      for (let i = m.sb; i <= m.eb; i++) if (bs[i]) wrap(bs[i], i === m.sb ? m.so : 0, i === m.eb ? m.eo : bs[i].textContent.length, m.id);
+    }
+    function unpaint(id) {
+      book.querySelectorAll(`mark.hl[data-h="${id}"]`).forEach((mk) => { const p = mk.parentNode; mk.replaceWith(...mk.childNodes); p.normalize(); });
+    }
+    function chapterOf(m) {
+      const bs = textBlocks(); let name = '';
+      for (let i = 0; i <= m.sb && i < bs.length; i++) if (bs[i].tagName === 'H2') name = bs[i].textContent;
+      return name;
+    }
+    function renderList() {
+      const ol = $('#markList');
+      const items = t.list.slice().sort((a, b) => a.sb - b.sb || a.so - b.so);
+      ol.innerHTML = items.length ? items.map((m) => `<li><button data-m="${m.id}"><span class="snip"><span class="dot"></span>${esc(m.text)}</span>${chapterOf(m) ? `<span class="sub">${esc(chapterOf(m))}</span>` : ''}</button></li>`).join('')
+        : '<li class="hint">還沒有標記。選取一段文字，按上方的「畫黃線」就會出現在這裡。</li>';
+      ol.querySelectorAll('[data-m]').forEach((btn) => { btn.onclick = () => { closeDrawers(); t.goto(btn.dataset.m); }; });
+    }
+    function persist() {
+      if (!bookId) return;
+      const v = { at: Date.now(), items: t.list };
+      store.set('reader:marks:' + bookId, v);
+      db.setPos('marks:' + bookId, v);
+      cloud.saveMarks(bookId, v);
+      renderList();
+    }
+    t.load = async (id) => {
+      bookId = id; t.list = [];
+      const cands = [store.get('reader:marks:' + id, null), await db.getPos('marks:' + id), cloud.marksOf(id)].filter(Boolean);
+      const best = cands.sort((a, b) => (b.at || 0) - (a.at || 0))[0];
+      if (bookId !== id) return;
+      t.list = (best && Array.isArray(best.items)) ? best.items : [];
+      t.list.forEach(paint);
+      renderList();
+    };
+    t.goto = (id) => { const el = book.querySelector(`mark.hl[data-h="${id}"]`); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+    const bar = $('#markBar');
+    function showAdd() { selectedId = null; $('#markAdd').hidden = false; $('#markDel').hidden = true; bar.hidden = false; }
+    function hideBar() { bar.hidden = true; selectedId = null; }
+    t.select = (id) => { selectedId = id; $('#markAdd').hidden = true; $('#markDel').hidden = false; bar.hidden = false; };
+    t.hide = hideBar;
+    t.open = () => !bar.hidden;
+    document.addEventListener('selectionchange', () => {
+      if (!current) return;
+      const sel = getSelection();
+      if (sel && !sel.isCollapsed && sel.rangeCount && book.contains(sel.anchorNode) && sel.toString().trim()) {
+        savedRange = sel.getRangeAt(0).cloneRange(); showAdd();
+      } else if (!selectedId) {
+        setTimeout(() => { const s2 = getSelection(); if (!s2 || s2.isCollapsed) { if (!selectedId) hideBar(); } }, 250);
+      }
+    });
+    // 按按鈕時不要讓手機先把選取取消
+    bar.addEventListener('pointerdown', (e) => e.preventDefault());
+    bar.addEventListener('mousedown', (e) => e.preventDefault());
+    $('#markAdd').onclick = () => {
+      const r = savedRange; if (!r || !current) return;
+      const bs = textBlocks();
+      let sb = bs.indexOf(blockOf(r.startContainer)), eb = bs.indexOf(blockOf(r.endContainer));
+      if (sb < 0 && eb < 0) return;
+      let so = sb < 0 ? 0 : offsetIn(bs[sb], r.startContainer, r.startOffset);
+      let eo = eb < 0 ? 0 : offsetIn(bs[eb], r.endContainer, r.endOffset);
+      if (sb < 0) sb = eb;
+      if (eb < 0) { eb = sb; eo = bs[sb].textContent.length; }
+      if (eb === sb && eo <= so) return;
+      const m = { id: 'h' + Date.now().toString(36), sb, so, eb, eo, text: r.toString().replace(/\s+/g, ' ').trim().slice(0, 120), at: Date.now() };
+      t.list.push(m); paint(m);
+      getSelection().removeAllRanges(); savedRange = null; hideBar();
+      if (typeof trans !== 'undefined') trans.hide();
+      persist();
+      toast('已畫黃線，可以在「目錄」裡的「我的黃線標記」找到');
+    };
+    $('#markDel').onclick = () => {
+      if (!selectedId) return;
+      unpaint(selectedId); t.list = t.list.filter((m) => m.id !== selectedId);
+      hideBar(); persist(); toast('已移除黃線');
+    };
+    return t;
+  })();
+
   /* ---------- 捲動 ---------- */
   const maxScroll = () => Math.max(1, root.scrollHeight - innerHeight);
   const scrollRatio = () => Math.min(1, Math.max(0, scrollY / maxScroll()));
@@ -1049,6 +1184,9 @@
     if (!current || e.target.closest('a,label,button')) return;
     const sel = getSelection();
     if (sel && !sel.isCollapsed) return;   // 正在選字，不切換工具列
+    const mk = e.target.closest('mark.hl');
+    if (mk) { marks.select(mk.dataset.h); return; }   // 點一下黃線，可以移除
+    if (marks.open()) { marks.hide(); return; }
     if (trans.open) { trans.hide(); return; }
     const para = e.target.closest(tts.SELECTOR);
     if (tts.playing && para) { tts.startAt(para); $('#bar').classList.remove('hidden'); return; }   // 朗讀中點一段，就從那段開始念
