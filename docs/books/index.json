@@ -6,6 +6,7 @@
       "author": "Lewis Carroll",
       "lang": "en",
       "file": "alice.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/11"
     },
     {
@@ -14,6 +15,7 @@
       "author": "F. Scott Fitzgerald",
       "lang": "en",
       "file": "gatsby.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/64317"
     },
     {
@@ -22,6 +24,7 @@
       "author": "Jane Austen",
       "lang": "en",
       "file": "pride.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/1342"
     },
     {
@@ -30,6 +33,7 @@
       "author": "Arthur Conan Doyle",
       "lang": "en",
       "file": "sherlock.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/1661"
     },
     {
@@ -38,6 +42,7 @@
       "author": "Mary Shelley",
       "lang": "en",
       "file": "frankenstein.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/84"
     },
     {
@@ -46,6 +51,7 @@
       "author": "J. M. Barrie",
       "lang": "en",
       "file": "peterpan.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/16"
     },
     {
@@ -54,6 +60,7 @@
       "author": "L. Frank Baum",
       "lang": "en",
       "file": "oz.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/55"
     },
     {
@@ -62,6 +69,7 @@
       "author": "Charles Dickens",
       "lang": "en",
       "file": "carol.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/46"
     },
     {
@@ -70,6 +78,7 @@
       "author": "Louisa May Alcott",
       "lang": "en",
       "file": "littlewomen.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/37106"
     },
     {
@@ -78,6 +87,7 @@
       "author": "L. M. Montgomery",
       "lang": "en",
       "file": "anne.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/45"
     },
     {
@@ -86,6 +96,7 @@
       "author": "Mark Twain",
       "lang": "en",
       "file": "tomsawyer.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/74"
     },
     {
@@ -94,6 +105,7 @@
       "author": "Robert Louis Stevenson",
       "lang": "en",
       "file": "treasure.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/120"
     },
     {
@@ -102,6 +114,7 @@
       "author": "Rudyard Kipling",
       "lang": "en",
       "file": "junglebook.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/236"
     },
     {
@@ -110,6 +123,7 @@
       "author": "Frances Hodgson Burnett",
       "lang": "en",
       "file": "secretgarden.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/113"
     },
     {
@@ -118,6 +132,7 @@
       "author": "Aesop",
       "lang": "en",
       "file": "aesop.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/11339"
     },
     {
@@ -126,6 +141,7 @@
       "author": "吳承恩",
       "lang": "zh",
       "file": "xiyouji.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/23962"
     },
     {
@@ -134,6 +150,7 @@
       "author": "羅貫中",
       "lang": "zh",
       "file": "sanguo.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/23950"
     },
     {
@@ -142,6 +159,7 @@
       "author": "曹雪芹",
       "lang": "zh",
       "file": "hongloumeng.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/24264"
     },
     {
@@ -150,6 +168,7 @@
       "author": "施耐庵",
       "lang": "zh",
       "file": "shuihu.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/23863"
     },
     {
@@ -158,6 +177,7 @@
       "author": "孔子弟子及再傳弟子",
       "lang": "zh",
       "file": "lunyu.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/23839"
     },
     {
@@ -166,6 +186,7 @@
       "author": "老子",
       "lang": "zh",
       "file": "daodejing.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/7337"
     },
     {
@@ -174,6 +195,7 @@
       "author": "孫武",
       "lang": "zh",
       "file": "sunzi.epub",
+      "tag": "strategy",
       "source": "https://www.gutenberg.org/ebooks/23864"
     },
     {
@@ -182,6 +204,7 @@
       "author": "孟子",
       "lang": "zh",
       "file": "mengzi.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/24178"
     },
     {
@@ -190,6 +213,7 @@
       "author": "王應麟",
       "lang": "zh",
       "file": "sanzijing.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/12479"
     },
     {
@@ -198,6 +222,7 @@
       "author": "蒲松齡",
       "lang": "zh",
       "file": "liaozhai.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/51828"
     },
     {
@@ -206,6 +231,7 @@
       "author": "吳敬梓",
       "lang": "zh",
       "file": "rulin.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/24032"
     },
     {
@@ -214,6 +240,7 @@
       "author": "許仲琳",
       "lang": "zh",
       "file": "fengshen.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/23910"
     },
     {
@@ -222,6 +249,7 @@
       "author": "劉鶚",
       "lang": "zh",
       "file": "laocan.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/23850"
     },
     {
@@ -230,6 +258,7 @@
       "author": "李汝珍",
       "lang": "zh",
       "file": "jinghuayuan.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/23818"
     },
     {
@@ -238,7 +267,17 @@
       "author": "王實甫",
       "lang": "zh",
       "file": "xixiangji.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/23906"
+    },
+    {
+      "id": "caigentan",
+      "title": "菜根譚",
+      "author": "洪應明",
+      "lang": "zh",
+      "file": "caigentan.epub",
+      "tag": "",
+      "source": "https://www.gutenberg.org/ebooks/24050"
     },
     {
       "id": "qianziwen",
@@ -246,6 +285,7 @@
       "author": "周興嗣",
       "lang": "zh",
       "file": "qianziwen.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/24184"
     },
     {
@@ -254,6 +294,7 @@
       "author": "劉義慶",
       "lang": "zh",
       "file": "shishuo.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/24047"
     },
     {
@@ -262,7 +303,53 @@
       "author": "李毓秀",
       "lang": "zh",
       "file": "dizigui.epub",
+      "tag": "",
       "source": "https://www.gutenberg.org/ebooks/23823"
+    },
+    {
+      "id": "dongzhou",
+      "title": "東周列國志",
+      "author": "馮夢龍、蔡元放",
+      "lang": "zh",
+      "file": "dongzhou.epub",
+      "tag": "strategy",
+      "source": "https://www.gutenberg.org/ebooks/25349"
+    },
+    {
+      "id": "suitang",
+      "title": "隋唐演義",
+      "author": "褚人穫",
+      "lang": "zh",
+      "file": "suitang.epub",
+      "tag": "strategy",
+      "source": "https://www.gutenberg.org/ebooks/23835"
+    },
+    {
+      "id": "guiguzi",
+      "title": "鬼谷子",
+      "author": "鬼谷子",
+      "lang": "zh",
+      "file": "guiguzi.epub",
+      "tag": "strategy",
+      "source": "https://www.gutenberg.org/ebooks/7209"
+    },
+    {
+      "id": "prince",
+      "title": "The Prince",
+      "author": "Niccolò Machiavelli",
+      "lang": "en",
+      "file": "prince.epub",
+      "tag": "strategy",
+      "source": "https://www.gutenberg.org/ebooks/1232"
+    },
+    {
+      "id": "artofwar",
+      "title": "The Art of War",
+      "author": "Sun Tzu (tr. Lionel Giles)",
+      "lang": "en",
+      "file": "artofwar.epub",
+      "tag": "strategy",
+      "source": "https://www.gutenberg.org/ebooks/132"
     }
   ]
 }
