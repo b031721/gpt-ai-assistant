@@ -209,6 +209,14 @@
       "source": "https://www.gutenberg.org/ebooks/24032"
     },
     {
+      "id": "fengshen",
+      "title": "封神演義",
+      "author": "許仲琳",
+      "lang": "zh",
+      "file": "fengshen.epub",
+      "source": "https://www.gutenberg.org/ebooks/23910"
+    },
+    {
       "id": "laocan",
       "title": "老殘遊記",
       "author": "劉鶚",
@@ -225,12 +233,36 @@
       "source": "https://www.gutenberg.org/ebooks/23818"
     },
     {
-      "id": "caigentan",
-      "title": "菜根譚",
-      "author": "洪應明",
+      "id": "xixiangji",
+      "title": "西廂記",
+      "author": "王實甫",
       "lang": "zh",
-      "file": "caigentan.epub",
-      "source": "https://www.gutenberg.org/ebooks/24050"
+      "file": "xixiangji.epub",
+      "source": "https://www.gutenberg.org/ebooks/23906"
+    },
+    {
+      "id": "qianziwen",
+      "title": "千字文",
+      "author": "周興嗣",
+      "lang": "zh",
+      "file": "qianziwen.epub",
+      "source": "https://www.gutenberg.org/ebooks/24184"
+    },
+    {
+      "id": "shishuo",
+      "title": "世說新語",
+      "author": "劉義慶",
+      "lang": "zh",
+      "file": "shishuo.epub",
+      "source": "https://www.gutenberg.org/ebooks/24047"
+    },
+    {
+      "id": "dizigui",
+      "title": "弟子規",
+      "author": "李毓秀",
+      "lang": "zh",
+      "file": "dizigui.epub",
+      "source": "https://www.gutenberg.org/ebooks/23823"
     }
   ]
 }
