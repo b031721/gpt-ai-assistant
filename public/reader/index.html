@@ -197,6 +197,9 @@
 </aside>
 <aside class="drawer" id="settings" aria-label="閱讀設定">
   <h3>閱讀設定 <button data-close aria-label="關閉">✕</button></h3>
+  <div class="row">語言
+    <div class="seg" id="langSeg"><button data-lang="zh-Hant" lang="zh-Hant">繁體</button><button data-lang="zh-Hans" lang="zh-Hans">简体</button><button data-lang="en" lang="en">English</button></div>
+  </div>
   <div class="row">字體大小
     <div class="seg sizes" id="sizeSeg"><button data-size="16">小</button><button data-size="18">較小</button><button data-size="20">標準</button><button data-size="23">大</button><button data-size="27">特大</button></div>
   </div>
@@ -209,15 +212,15 @@
   <h4>朗讀</h4>
   <div class="stack"><label for="ttsVoice">聲音</label><select id="ttsVoice"></select></div>
   <div class="row">語速
-    <div class="seg" id="rateSeg"><button data-rate="0.75">慢</button><button data-rate="0.9">標準</button><button data-rate="1.1">稍快</button><button data-rate="1.3">快</button></div>
+    <div class="seg" id="rateSeg"><button data-rate="0.75">慢</button><button data-rate="0.9">正常</button><button data-rate="1.1">稍快</button><button data-rate="1.3">快</button></div>
   </div>
   <div class="row"><span class="hint">聲音清單來自你的手機系統。</span><button class="ghost" id="ttsTry">試聽</button></div>
   <p class="hint" id="ttsNote"></p>
-  <h4>英文書</h4>
-  <div class="row">選取英文時自動翻譯成中文
+  <h4>翻譯</h4>
+  <div class="row">選取文字時自動翻譯
     <div class="seg" id="transSeg"><button data-trans="1">開</button><button data-trans="0">關</button></div>
   </div>
-  <p class="hint">長按一個單字，或拖曳選取一句話，下方就會出現中文翻譯。</p>
+  <p class="hint">長按一個單字，或拖曳選取一句話，下方就會出現翻譯。中文介面會把英文翻成中文，英文介面會把中文翻成英文。</p>
   <p class="hint">一直往下滑就能讀完整本書。往下讀時工具列會自動收起，往上滑一點或點一下文字就會出現。閱讀位置會自動記住。</p>
   <p class="hint">聽書時，從畫面上第一段開始念，畫面會跟著捲動。朗讀中點任何一段，就會改從那段開始念。手機螢幕關掉後，有些瀏覽器會停止朗讀。</p>
 </aside>
@@ -246,6 +249,36 @@
 <script>
 (() => {
   const $ = (s) => document.querySelector(s);
+
+  /* ---------- 介面語言：繁體中文（原文）、简体中文、English ---------- */
+  const I18N = {"捲軸書房": {"en": "Scroll Reader", "hans": "卷轴书房"}, "書架": {"en": "Shelf", "hans": "书架"}, "目前章節，點一下打開目錄": {"en": "Current chapter. Tap to open the contents", "hans": "目前章节，点一下打开目录"}, "目錄": {"en": "Contents", "hans": "目录"}, "閱讀設定": {"en": "Reading settings", "hans": "阅读设置"}, "關閉": {"en": "Close", "hans": "关闭"}, "我的黃線標記": {"en": "My highlights", "hans": "我的黄线标记"}, "＋ 加入一本書（epub 或 txt）": {"en": "+ Add a book (epub or txt)", "hans": "＋ 加入一本书（epub 或 txt）"}, "加入一本書": {"en": "Add a book", "hans": "加入一本书"}, "＋ 加入一本書": {"en": "+ Add a book", "hans": "＋ 加入一本书"}, "書存在這支手機的瀏覽器裡，不會上傳給別人。清除瀏覽資料後要重新加入。（在 Claude 網頁裡打開時，還會備份到你的 Claude 帳號。）": {"en": "Books are kept in this phone's browser and are never shared. If you clear your browsing data, add them again. (When opened inside Claude, they are also backed up to your Claude account.)", "hans": "书存在这支手机的浏览器里，不会上传给别人。清除浏览数据后要重新加入。（在 Claude 网页里打开时，还会备份到你的 Claude 账号。）"}, "語言": {"en": "Language", "hans": "语言"}, "字體大小": {"en": "Font size", "hans": "字体大小"}, "小": {"en": "XS", "hans": "小"}, "較小": {"en": "S", "hans": "较小"}, "標準": {"en": "M", "hans": "标准"}, "大": {"en": "L", "hans": "大"}, "特大": {"en": "XL", "hans": "特大"}, "行距": {"en": "Line spacing", "hans": "行距"}, "緊": {"en": "Tight", "hans": "紧"}, "中": {"en": "Normal", "hans": "中"}, "鬆": {"en": "Loose", "hans": "松"}, "紙色": {"en": "Paper", "hans": "纸色"}, "跟隨系統": {"en": "System", "hans": "跟随系统"}, "米黃": {"en": "Sepia", "hans": "米黄"}, "白": {"en": "White", "hans": "白"}, "夜間": {"en": "Night", "hans": "夜间"}, "朗讀": {"en": "Read aloud", "hans": "朗读"}, "聲音": {"en": "Voice", "hans": "声音"}, "語速": {"en": "Speed", "hans": "语速"}, "慢": {"en": "Slow", "hans": "慢"}, "正常": {"en": "Normal", "hans": "正常"}, "稍快": {"en": "Faster", "hans": "稍快"}, "快": {"en": "Fast", "hans": "快"}, "聲音清單來自你的手機系統。": {"en": "The voice list comes from your phone.", "hans": "声音清单来自你的手机系统。"}, "試聽": {"en": "Preview", "hans": "试听"}, "翻譯": {"en": "Translation", "hans": "翻译"}, "選取文字時自動翻譯": {"en": "Translate selected text automatically", "hans": "选取文字时自动翻译"}, "開": {"en": "On", "hans": "开"}, "關": {"en": "Off", "hans": "关"}, "長按一個單字，或拖曳選取一句話，下方就會出現翻譯。中文介面會把英文翻成中文，英文介面會把中文翻成英文。": {"en": "Long-press a word or drag to select a sentence, and a translation appears below. With a Chinese interface, English is translated into Chinese; with the English interface, Chinese is translated into English.", "hans": "长按一个单词，或拖曳选取一句话，下方就会出现翻译。中文界面会把英文翻成中文，英文界面会把中文翻成英文。"}, "一直往下滑就能讀完整本書。往下讀時工具列會自動收起，往上滑一點或點一下文字就會出現。閱讀位置會自動記住。": {"en": "Keep scrolling to read the whole book. The toolbar hides while you read; scroll up a little or tap the text to bring it back. Your place is saved automatically.", "hans": "一直往下滑就能读完整本书。往下读时工具列会自动收起，往上滑一点或点一下文字就会出现。阅读位置会自动记住。"}, "聽書時，從畫面上第一段開始念，畫面會跟著捲動。朗讀中點任何一段，就會改從那段開始念。手機螢幕關掉後，有些瀏覽器會停止朗讀。": {"en": "Read aloud starts from the first paragraph on screen, and the page follows along. Tap any paragraph while it's reading to continue from there. Some browsers stop reading when the screen turns off.", "hans": "听书时，从画面上第一段开始念，画面会跟着卷动。朗读中点任何一段，就会改从那段开始念。手机屏幕关掉后，有些浏览器会停止朗读。"}, "上一段": {"en": "Previous paragraph", "hans": "上一段"}, "聽書": {"en": "Listen", "hans": "听书"}, "下一段": {"en": "Next paragraph", "hans": "下一段"}, "停止朗讀": {"en": "Stop reading", "hans": "停止朗读"}, "標記": {"en": "Highlight", "hans": "标记"}, "畫黃線": {"en": "Highlight", "hans": "画黄线"}, "移除這個黃線": {"en": "Remove highlight", "hans": "移除这个黄线"}, "關閉翻譯": {"en": "Close translation", "hans": "关闭翻译"}, "發音": {"en": "Pronounce", "hans": "发音"}, "在 Google 翻譯打開": {"en": "Open in Google Translate", "hans": "在 Google 翻译打开"}, "已把 {0} 本書備份到你的 Claude 帳號": {"en": "Backed up {0} book(s) to your Claude account", "hans": "已把 {0} 本书备份到你的 Claude 账号"}, "・柔和": {"en": " · soft", "hans": "・柔和"}, "使用系統預設聲音": {"en": "System default voice", "hans": "使用系统默认声音"}, "這個瀏覽器不支援朗讀。請用 Chrome 或 Safari。": {"en": "This browser can't read aloud. Please use Chrome or Safari.", "hans": "这个浏览器不支持朗读。请用 Chrome 或 Safari。"}, "找不到適合這本書的聲音。可以到手機的「設定 → 文字轉語音」下載語音。": {"en": "No voice for this book's language was found. You can download one in your phone's Settings → Text-to-speech.", "hans": "找不到适合这本书的声音。可以到手机的「设置 → 文字转语音」下载语音。"}, "全書念完了": {"en": "Finished reading the book", "hans": "全书念完了"}, "朗讀失敗了。請到「Aa」換一個聲音再試。": {"en": "Reading aloud failed. Choose another voice under “Aa” and try again.", "hans": "朗读失败了。请到「Aa」换一个声音再试。"}, "暫停": {"en": "Pause", "hans": "暂停"}, "繼續": {"en": "Resume", "hans": "继续"}, "需要網路連線才能讀 epub，請確認已連上網路後再試一次。": {"en": "Opening an epub needs an internet connection. Check your connection and try again.", "hans": "需要网络连接才能读 epub，请确认已连上网络后再试一次。"}, "epub 缺少檔案：{0}": {"en": "The epub is missing a file: {0}", "hans": "epub 缺少文件：{0}"}, "封面": {"en": "Cover", "hans": "封面"}, "正在讀取「{0}」…": {"en": "Reading “{0}”…", "hans": "正在读取「{0}」…"}, "「{0}」不是 epub 或 txt 檔。請到好讀選「下載 epub 檔」。": {"en": "“{0}” isn't an epub or txt file. Please download the epub version of the book.", "hans": "「{0}」不是 epub 或 txt 文件。请到好读选「下载 epub 文件」。"}, "這本書讀不到文字內容。": {"en": "No text could be found in this book.", "hans": "这本书读不到文字内容。"}, "已加入《{0}》，正在備份到你的 Claude 帳號…": {"en": "Added “{0}”. Backing it up to your Claude account…", "hans": "已加入《{0}》，正在备份到你的 Claude 账号…"}, "已加入《{0}》，也備份到你的 Claude 帳號了": {"en": "Added “{0}” and backed it up to your Claude account", "hans": "已加入《{0}》，也备份到你的 Claude 账号了"}, "已加入《{0}》。這本書太大，沒辦法備份到雲端，只存在這台裝置。": {"en": "Added “{0}”. It's too large to back up, so it's only on this device.", "hans": "已加入《{0}》。这本书太大，没办法备份到云端，只存在这台设备。"}, "這個瀏覽器不能存書，關掉頁面後要重新加入。": {"en": "This browser can't save books, so you'll need to add it again after closing the page.", "hans": "这个浏览器不能存书，关掉页面后要重新加入。"}, "已加入《{0}》（只存在這台裝置）": {"en": "Added “{0}” (on this device only)", "hans": "已加入《{0}》（只存在这台设备）"}, "讀取失敗：{0}": {"en": "Couldn't open the file: {0}", "hans": "读取失败：{0}"}, "沒有跳出選檔畫面嗎？你可能是在 App 裡面打開這個網頁，它不支援選擇檔案。請按右上角的分享按鈕複製連結，貼到 Chrome 或 Safari 打開，再按一次「加入一本書」。": {"en": "No file picker? You may have opened this page inside an app that can't pick files. Copy the link from the share button, open it in Chrome or Safari, and tap “Add a book” again.", "hans": "没有跳出选文件画面吗？你可能是在 App 里面打开这个网页，它不支持选择文件。请按右上角的分享按钮拷贝链接，贴到 Chrome 或 Safari 打开，再按一次「加入一本书」。"}, "已備份到 Claude 帳號": {"en": "Backed up to Claude", "hans": "已备份到 Claude 账号"}, "只在這台裝置": {"en": "On this device only", "hans": "只在这台设备"}, "從書架移除": {"en": "Remove from shelf", "hans": "从书架移除"}, "移除": {"en": "Remove", "hans": "移除"}, "確定？": {"en": "Sure?", "hans": "确定？"}, "書架還是空的。": {"en": "Your shelf is empty.", "hans": "书架还是空的。"}, "《{0}》的內文檔案還沒放到伺服器上。你可以先用下面的方法，從自己的手機加入這本書。": {"en": "The text of “{0}” isn't on the server yet. You can add the book from your own phone as described below.", "hans": "《{0}》的内文文件还没放到服务器上。你可以先用下面的方法，从自己的手机加入这本书。"}, "正在從你的 Claude 帳號下載這本書…": {"en": "Downloading this book from your Claude account…", "hans": "正在从你的 Claude 账号下载这本书…"}, "下載失敗：{0}": {"en": "Download failed: {0}", "hans": "下载失败：{0}"}, "— 全書完 —": {"en": "— The End —", "hans": "— 全书完 —"}, "這本書沒有偵測到章節標題。": {"en": "No chapter titles were found in this book.", "hans": "这本书没有检测到章节标题。"}, "回到上次讀到的地方": {"en": "Back to where you left off", "hans": "回到上次读到的地方"}, "回到上次讀到的地方：{0}": {"en": "Back to where you left off: {0}", "hans": "回到上次读到的地方：{0}"}, "先加入一本書。": {"en": "Add a book first.", "hans": "先加入一本书。"}, "不用翻頁，一路往下滑就能讀完整本書。": {"en": "No page turning. Just keep scrolling to read the whole book.", "hans": "不用翻页，一路往下滑就能读完整本书。"}, "到 <a href=\"https://www.haodoo.net/\" target=\"_blank\" rel=\"noopener\">好讀</a> 找到想看的書（例如喬治・歐威爾的《動物農莊》），按 <b>「下載 epub 檔」</b>。直式或橫式都可以，在這裡都會變成橫排閱讀。": {"en": "Find a book and download its <b>EPUB</b> file, for example from <a href=\"https://www.gutenberg.org/\" target=\"_blank\" rel=\"noopener\">Project Gutenberg</a> (English) or <a href=\"https://www.haodoo.net/\" target=\"_blank\" rel=\"noopener\">Haodoo</a> (Chinese).", "hans": "到 <a href=\"https://www.haodoo.net/\" target=\"_blank\" rel=\"noopener\">好读</a> 找到想看的书（例如乔治・欧威尔的《动物农庄》），按 <b>「下载 epub 文件」</b>。直式或横式都可以，在这里都会变成横排阅读。"}, "回到這個頁面，按下面的 <b>「加入一本書」</b>，選剛剛下載的 .epub 檔。手機上通常在「下載」資料夾裡。": {"en": "Come back here, tap <b>“Add a book”</b> below and pick the .epub file you downloaded. On a phone it's usually in the Downloads folder.", "hans": "回到这个页面，按下面的 <b>「加入一本书」</b>，选刚刚下载的 .epub 文件。手机上通常在「下载」文件夹里。"}, "開始往下滑。上方「目錄」可以跳章節，「Aa」可以調字體大小和紙色，閱讀位置會自動記住。": {"en": "Start scrolling. “Contents” jumps between chapters, “Aa” changes the font size and paper color, and your place is saved automatically.", "hans": "开始往下滑。上方「目录」可以跳章节，「Aa」可以调字体大小和纸色，阅读位置会自动记住。"}, "支援 epub 和 txt。好讀的 updb、prc、mobi 是給其他閱讀器用的格式，這裡讀不了，請選 epub。書存在你這支手機的瀏覽器裡，不會上傳給別人。": {"en": "Supports epub and txt. Formats such as updb, prc and mobi are for other readers and can't be opened here, so choose epub. Books are kept in this phone's browser and are never shared.", "hans": "支持 epub 和 txt。好读的 updb、prc、mobi 是给其他阅读器用的格式，这里读不了，请选 epub。书存在你这支手机的浏览器里，不会上传给别人。"}, "你沒有允許這個網頁使用 Claude，所以無法翻譯。可以改用下面的 Google 翻譯。": {"en": "This page isn't allowed to use Claude, so it can't translate. You can use Google Translate below instead.", "hans": "你没有允许这个网页使用 Claude，所以无法翻译。可以改用下面的 Google 翻译。"}, "這個帳號目前不能使用 Claude 翻譯。可以改用下面的 Google 翻譯。": {"en": "This account can't use Claude for translation right now. You can use Google Translate below instead.", "hans": "这个账号目前不能使用 Claude 翻译。可以改用下面的 Google 翻译。"}, "翻譯得太頻繁了，請稍等一下再選取。": {"en": "Too many translations in a row. Wait a moment, then select again.", "hans": "翻译得太频繁了，请稍等一下再选取。"}, "登入已過期，請重新登入 Claude 後再試。": {"en": "Your sign-in expired. Sign in to Claude again and retry.", "hans": "登录已过期，请重新登录 Claude 后再试。"}, "翻譯中…": {"en": "Translating…", "hans": "翻译中…"}, "現在無法翻譯（可能是網路不穩）。請稍後再選一次，或點下面的「在 Google 翻譯打開」。": {"en": "Can't translate right now (the connection may be unstable). Select again later, or tap “Open in Google Translate” below.", "hans": "现在无法翻译（可能是网络不稳）。请稍后再选一次，或点下面的「在 Google 翻译打开」。"}, "翻譯失敗了，請再選取一次，或改用下面的 Google 翻譯。": {"en": "Translation failed. Select the text again, or use Google Translate below.", "hans": "翻译失败了，请再选取一次，或改用下面的 Google 翻译。"}, "還沒有標記。選取一段文字，按上方的「畫黃線」就會出現在這裡。": {"en": "No highlights yet. Select some text and tap “Highlight” at the top to add one here.", "hans": "还没有标记。选取一段文字，按上方的「画黄线」就会出现在这里。"}, "已畫黃線，可以在「目錄」裡的「我的黃線標記」找到": {"en": "Highlighted. Find it under “My highlights” in Contents", "hans": "已画黄线，可以在「目录」里的「我的黄线标记」找到"}, "已移除黃線": {"en": "Highlight removed", "hans": "已移除黄线"}};
+  let LANG = (() => {
+    try { const p = JSON.parse(localStorage.getItem('reader:prefs') || '{}'); if (p.lang) return p.lang; } catch {}
+    const n = (navigator.language || '').toLowerCase();
+    return /^zh-(cn|sg|hans)/.test(n) ? 'zh-Hans' : /^zh/.test(n) ? 'zh-Hant' : 'en';
+  })();
+  function tr(key, ...args) {
+    const e = I18N[key];
+    const s = LANG === 'en' ? (e ? e.en : key) : LANG === 'zh-Hans' ? (e ? e.hans : key) : key;
+    return s.replace(/\{(\d)\}/g, (_, i) => args[i]);
+  }
+  // 把頁面上固定的文字（按鈕、標題、說明）換成目前語言；書的內容不動
+  function applyI18n() {
+    document.documentElement.lang = LANG;
+    const skip = (el) => el.closest('#book, #tocList, #markList, #shelfList, #ttsVoice, #langSeg, #transSrc, #transOut, #toast, #barTitle');
+    document.querySelectorAll('body *').forEach((el) => {
+      if (skip(el)) return;
+      el.childNodes.forEach((n) => {
+        if (n.nodeType !== 3) return;
+        if (n.i18nKey === undefined) { const k = n.data.trim(); n.i18nKey = I18N[k] ? k : null; }
+        if (n.i18nKey) n.data = tr(n.i18nKey);
+      });
+      if (el.hasAttribute('aria-label')) {
+        if (el.i18nAria === undefined) { const k = el.getAttribute('aria-label'); el.i18nAria = I18N[k] ? k : null; }
+        if (el.i18nAria) el.setAttribute('aria-label', tr(el.i18nAria));
+      }
+    });
+  }
   const root = document.documentElement;
   const book = $('#book');
   const store = {
@@ -391,7 +424,7 @@
       else if (r === 'too_large' || r === 'unsupported_type' || r === 'quota_or_state') { b.cloudSkip = r; db.put(b); }
       else break;   // 暫時連不上就下次再試
     }
-    if (n) { toast(`已把 ${n} 本書備份到你的 Claude 帳號`); refreshShelf(); }
+    if (n) { toast(tr('已把 {0} 本書備份到你的 Claude 帳號', n)); refreshShelf(); }
   }
 
   /* ---------- 閱讀設定 ---------- */
@@ -402,6 +435,7 @@
     root.style.setProperty('--size', prefs.font + 'px');
     root.style.setProperty('--lead', prefs.lh);
     if (prefs.paper) root.dataset.paper = prefs.paper; else delete root.dataset.paper;
+    document.querySelectorAll('#langSeg button').forEach((b) => b.classList.toggle('on', b.dataset.lang === LANG));
     document.querySelectorAll('#sizeSeg button').forEach((b) => b.classList.toggle('on', +b.dataset.size === prefs.font));
     document.querySelectorAll('#rateSeg button').forEach((b) => b.classList.toggle('on', +b.dataset.rate === prefs.rate));
     const rb = $('#ttsRate'); if (rb) rb.textContent = prefs.rate.toFixed(2).replace(/0$/, '') + '×';
@@ -414,12 +448,22 @@
     const a = anchor(); fn();
     requestAnimationFrame(() => goAnchor(a));
   }
+  document.querySelectorAll('#langSeg button').forEach((b) => {
+    b.onclick = () => {
+      if (b.dataset.lang === LANG) return;
+      LANG = b.dataset.lang; prefs.lang = LANG; applyPrefs(); applyI18n();
+      tts.refresh();
+      // 重新畫出目前的書（會回到同一段），讓章節、清單、提示都換成新語言
+      if (current) { savePosition(); const id = current.id; current = null; openBook(id); } else welcome();
+    };
+  });
   document.querySelectorAll('#sizeSeg button').forEach((b) => { b.onclick = () => keepPosition(() => { prefs.font = +b.dataset.size; applyPrefs(); }); });
   document.querySelectorAll('#rateSeg button').forEach((b) => { b.onclick = () => { prefs.rate = +b.dataset.rate; applyPrefs(); tts.restartChunk(); }; });
   document.querySelectorAll('[data-lh]').forEach((b) => { b.onclick = () => keepPosition(() => { prefs.lh = +b.dataset.lh; applyPrefs(); }); });
   document.querySelectorAll('#transSeg button').forEach((b) => { b.onclick = () => { prefs.trans = +b.dataset.trans; applyPrefs(); }; });
   document.querySelectorAll('#paperSeg button').forEach((b) => { b.onclick = () => { prefs.paper = b.dataset.paper; applyPrefs(); }; });
   applyPrefs();
+  applyI18n();
 
   /* ---------- 朗讀（瀏覽器內建的語音合成）---------- */
   const tts = (() => {
@@ -442,10 +486,10 @@
       const sel = $('#ttsVoice'); if (!sel) return;
       const vs = voices();
       const chosen = pickVoice();
-      sel.innerHTML = vs.length ? vs.map((v) => `<option value="${esc(v.voiceURI)}"${chosen && v.voiceURI === chosen.voiceURI ? ' selected' : ''}>${esc(v.name)}（${esc(v.lang)}）${score(v) < 8 ? '・柔和' : ''}</option>`).join('')
-        : '<option value="">使用系統預設聲音</option>';
-      $('#ttsNote').textContent = !synth ? '這個瀏覽器不支援朗讀。請用 Chrome 或 Safari。'
-        : vs.length ? '' : '找不到中文聲音。可以到手機的「設定 → 文字轉語音」下載中文語音。';
+      sel.innerHTML = vs.length ? vs.map((v) => `<option value="${esc(v.voiceURI)}"${chosen && v.voiceURI === chosen.voiceURI ? ' selected' : ''}>${esc(v.name)}（${esc(v.lang)}）${score(v) < 8 ? tr('・柔和') : ''}</option>`).join('')
+        : `<option value="">${tr('使用系統預設聲音')}</option>`;
+      $('#ttsNote').textContent = !synth ? tr('這個瀏覽器不支援朗讀。請用 Chrome 或 Safari。')
+        : vs.length ? '' : tr('找不到適合這本書的聲音。可以到手機的「設定 → 文字轉語音」下載語音。');
     }
     function chunk(text) {
       // 長段落切成句子，避免部分瀏覽器念到一半中斷
@@ -464,7 +508,7 @@
     function say() {
       if (!t.playing) return;
       const el = t.paras[t.idx];
-      if (!el) { stop(); toast('全書念完了'); return; }
+      if (!el) { stop(); toast(tr('全書念完了')); return; }
       if (t.ci === 0) { t.chunks = chunk(el.textContent.replace(/\s+/g, ' ').trim()); mark(); }
       if (!t.chunks.length) { t.idx++; t.ci = 0; say(); return; }
       const u = new SpeechSynthesisUtterance(t.chunks[t.ci]);
@@ -481,7 +525,7 @@
       u.onerror = (e) => {
         if (e.error === 'interrupted' || e.error === 'canceled' || t.u !== u) return;
         t.fails = (t.fails || 0) + 1;
-        if (t.fails >= 3) { stop(); toast('朗讀失敗了。請到「Aa」換一個聲音再試。'); return; }
+        if (t.fails >= 3) { stop(); toast(tr('朗讀失敗了。請到「Aa」換一個聲音再試。')); return; }
         advance();
       };
       t.u = u;
@@ -489,7 +533,7 @@
     }
     function ui() {
       $('#player').classList.toggle('active', t.playing || t.paused);
-      $('#ttsLabel').textContent = t.playing ? '暫停' : (t.paused ? '繼續' : '聽書');
+      $('#ttsLabel').textContent = tr(t.playing ? '暫停' : (t.paused ? '繼續' : '聽書'));
       $('#ttsIcon').innerHTML = t.playing ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' : '<path d="M7 4v16l13-8z"/>';
       $('#ttsPlay').setAttribute('aria-label', $('#ttsLabel').textContent);
     }
@@ -526,6 +570,7 @@
     t.stop = stop;
     t.startAt = (el) => { collect(); const i = t.paras.indexOf(el); if (i >= 0) play(i); };
     t.restartChunk = () => { if (t.playing) { t.u = null; synth.cancel(); setTimeout(say, 60); } };
+    t.refresh = () => { if ($('#player')) ui(); fillVoices(); };
     t.show = () => { $('#player').hidden = !synth || !current; fillVoices(); };
     if (synth) {
       fillVoices();
@@ -549,7 +594,7 @@
       };
       document.addEventListener('visibilitychange', () => { if (!document.hidden && t.playing) wake(true); });
     } else {
-      $('#ttsNote').textContent = '這個瀏覽器不支援朗讀。請用 Chrome 或 Safari。';
+      $('#ttsNote').textContent = tr('這個瀏覽器不支援朗讀。請用 Chrome 或 Safari。');
     }
     return t;
   })();
@@ -599,9 +644,9 @@
   const BLOCK = new Set(['p', 'div', 'section', 'article', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'figure', 'center', 'body', 'main', 'aside', 'header', 'footer', 'nav', 'dl', 'dd', 'dt', 'hr', 'pre']);
 
   async function epubToBook(file) {
-    if (!window.JSZip) throw new Error('需要網路連線才能讀 epub，請確認已連上網路後再試一次。');
+    if (!window.JSZip) throw new Error(tr('需要網路連線才能讀 epub，請確認已連上網路後再試一次。'));
     const zip = await JSZip.loadAsync(file);
-    const readText = async (p) => { const f = zip.file(p); if (!f) throw new Error('epub 缺少檔案：' + p); return f.async('string'); };
+    const readText = async (p) => { const f = zip.file(p); if (!f) throw new Error(tr('epub 缺少檔案：{0}', p)); return f.async('string'); };
     const parse = (s, type) => new DOMParser().parseFromString(s, type);
     const container = parse(await readText('META-INF/container.xml'), 'application/xml');
     const opfPath = container.querySelector('rootfile').getAttribute('full-path');
@@ -669,7 +714,7 @@
     // 內文裡沒出現過的封面，放在最前面
     if (coverItem && /^image\//.test(coverItem.type) && !(coverItem.href in imgCache)) {
       const src = await imgSrc('', coverItem.href);
-      if (src) html = `<img class="cover" src="${src}" alt="封面">` + html;
+      if (src) html = `<img class="cover" src="${src}" alt="${tr('封面')}">` + html;
     }
     return { title: meta('title') || file.name.replace(/\.epub$/i, ''), author: meta('creator'), html };
   }
@@ -683,7 +728,7 @@
     if (!f || busy) return;
     busy = true;
     closeDrawers();
-    status(`正在讀取「${f.name}」…`);
+    status(tr('正在讀取「{0}」…', f.name));
     try {
       let b;
       // 有些手機給的檔名沒有副檔名，所以也看檔頭：epub 是 zip，開頭是 "PK"
@@ -697,26 +742,26 @@
         if ((text.match(/\uFFFD/g) || []).length > 3) { try { text = new TextDecoder('big5').decode(buf); } catch {} }
         b = { title: f.name.replace(/\.[^.]+$/, ''), author: '', html: txtToHtml(text) };
       } else {
-        status(`「${f.name}」不是 epub 或 txt 檔。請到好讀選「下載 epub 檔」。`);
+        status(tr('「{0}」不是 epub 或 txt 檔。請到好讀選「下載 epub 檔」。', f.name));
         return;
       }
-      if (!b.html.trim()) { status('這本書讀不到文字內容。'); return; }
+      if (!b.html.trim()) { status(tr('這本書讀不到文字內容。')); return; }
       b.id = 'b' + Date.now().toString(36);
       b.addedAt = Date.now();
       const saved = await db.put(b);
       memory[b.id] = b;
       await refreshShelf();
       openBook(b.id);
-      status(`已加入《${b.title}》，正在備份到你的 Claude 帳號…`);
+      status(tr('已加入《{0}》，正在備份到你的 Claude 帳號…', b.title));
       const r = await cloud.save(b);
-      if (r === 'ok') toast(`已加入《${b.title}》，也備份到你的 Claude 帳號了`);
-      else if (r === 'too_large') { b.cloudSkip = r; db.put(b); toast(`已加入《${b.title}》。這本書太大，沒辦法備份到雲端，只存在這台裝置。`); }
-      else if (saved === null) toast('這個瀏覽器不能存書，關掉頁面後要重新加入。');
-      else toast(`已加入《${b.title}》（只存在這台裝置）`);
+      if (r === 'ok') toast(tr('已加入《{0}》，也備份到你的 Claude 帳號了', b.title));
+      else if (r === 'too_large') { b.cloudSkip = r; db.put(b); toast(tr('已加入《{0}》。這本書太大，沒辦法備份到雲端，只存在這台裝置。', b.title)); }
+      else if (saved === null) toast(tr('這個瀏覽器不能存書，關掉頁面後要重新加入。'));
+      else toast(tr('已加入《{0}》（只存在這台裝置）', b.title));
       refreshShelf();
     } catch (err) {
       console.error(err);
-      status('讀取失敗：' + (err.message || err));
+      status(tr('讀取失敗：{0}', err.message || err));
     } finally {
       busy = false;
     }
@@ -733,7 +778,7 @@
     cancelPickHint();
     pickTimer = setTimeout(() => {
       if (document.hasFocus() && !document.hidden) {
-        const msg = '沒有跳出選檔畫面嗎？你可能是在 App 裡面打開這個網頁，它不支援選擇檔案。請按右上角的分享按鈕複製連結，貼到 Chrome 或 Safari 打開，再按一次「加入一本書」。';
+        const msg = tr('沒有跳出選檔畫面嗎？你可能是在 App 裡面打開這個網頁，它不支援選擇檔案。請按右上角的分享按鈕複製連結，貼到 Chrome 或 Safari 打開，再按一次「加入一本書」。');
         const el = $('#status');
         if (el) el.textContent = msg; else toast(msg);
       }
@@ -759,16 +804,16 @@
     const all = [...local, ...Object.values(memory).filter((m) => !local.some((l) => l.id === m.id))];
     for (const cb of cloud.list) if (!all.some((l) => l.id === cb.id)) all.push(cb);
     const merged = all.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0))
-      .map(({ id, title, author }) => ({ id, title, author, where: cloud.has(id) ? '已備份到 Claude 帳號' : (cloud.ok ? '只在這台裝置' : '') }));
+      .map(({ id, title, author }) => ({ id, title, author, where: cloud.has(id) ? tr('已備份到 Claude 帳號') : (cloud.ok ? tr('只在這台裝置') : '') }));
     shelf = [...merged, ...serverList];
     $('#shelfList').innerHTML = shelf.length ? shelf.map((b) => `<li>
         <button data-id="${esc(b.id)}" class="${current && current.id === b.id ? 'active' : ''}">${esc(b.title)}${b.author ? `<span class="sub">${esc(b.author)}</span>` : ''}${b.where ? `<span class="sub">${esc(b.where)}</span>` : ''}</button>
-        ${b.server ? '' : `<button class="del" data-del="${esc(b.id)}" aria-label="從書架移除">移除</button>`}
-      </li>`).join('') : '<li class="hint">書架還是空的。</li>';
+        ${b.server ? '' : `<button class="del" data-del="${esc(b.id)}" aria-label="${tr('從書架移除')}">${tr('移除')}</button>`}
+      </li>`).join('') : `<li class="hint">${tr('書架還是空的。')}</li>`;
     $('#shelfList').querySelectorAll('[data-id]').forEach((btn) => { btn.onclick = () => { closeDrawers(); openBook(btn.dataset.id); }; });
     $('#shelfList').querySelectorAll('[data-del]').forEach((btn) => {
       btn.onclick = async () => {
-        if (btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = '確定？'; return; }
+        if (btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = tr('確定？'); return; }
         const id = btn.dataset.del;
         await db.del(id); delete memory[id]; await cloud.remove(id);
         if (current && current.id === id) { current = null; welcome(); }
@@ -794,14 +839,14 @@
         if (!text.trim()) throw new Error('missing');
         b = { ...entry, html: /\.html?$/.test(entry.file) ? text : txtToHtml(text) };
       } catch {
-        welcome(`《${entry.title}》的內文檔案還沒放到伺服器上。你可以先用下面的方法，從自己的手機加入這本書。`);
+        welcome(tr('《{0}》的內文檔案還沒放到伺服器上。你可以先用下面的方法，從自己的手機加入這本書。', entry.title));
         return;
       }
     } else {
       b = memory[id] || await db.get(id);
       if (!b && cloud.has(id)) {
-        toast('正在從你的 Claude 帳號下載這本書…');
-        try { b = await cloud.load(id); if (b) db.put(b); } catch (err) { toast('下載失敗：' + (err.message || err)); }
+        toast(tr('正在從你的 Claude 帳號下載這本書…'));
+        try { b = await cloud.load(id); if (b) db.put(b); } catch (err) { toast(tr('下載失敗：{0}', err.message || err)); }
       }
       if (!b) { welcome(); return; }
     }
@@ -838,7 +883,7 @@
     current = { id: b.id, title: b.title };
     store.set('reader:last', b.id);
     book.className = /[一-鿿]/.test(b.html.slice(0, 4000)) ? 'cjk' : '';
-    book.innerHTML = `<h1>${esc(b.title)}</h1>${b.author ? `<div class="byline">${esc(b.author)}</div>` : ''}${b.html}<p class="end">— 全書完 —</p>`;
+    book.innerHTML = `<h1>${esc(b.title)}</h1>${b.author ? `<div class="byline">${esc(b.author)}</div>` : ''}${b.html}<p class="end">${tr('— 全書完 —')}</p>`;
     markChapters();
     marks.hide();
     marks.load(b.id);
@@ -846,10 +891,10 @@
     headings.forEach((h, i) => { h.id = 'ch' + i; });
     $('#tocList').innerHTML = headings.length
       ? headings.map((h, i) => `<li><button data-i="${i}">${esc(h.textContent)}</button></li>`).join('')
-      : '<li class="hint">這本書沒有偵測到章節標題。</li>';
+      : `<li class="hint">${tr('這本書沒有偵測到章節標題。')}</li>`;
     $('#tocList').querySelectorAll('button').forEach((btn) => { btn.onclick = () => { closeDrawers(); headings[+btn.dataset.i].scrollIntoView({ behavior: 'smooth' }); }; });
     $('#barTitle').textContent = b.title;
-    document.title = b.title + '｜捲軸書房';
+    document.title = b.title + ' | ' + tr('捲軸書房');
     tts.show();
     refreshShelf();
     restorePosition(b.id);
@@ -889,7 +934,7 @@
       go();
       restoring = false; onScroll();
       lastY = scrollY; $('#bar').classList.remove('hidden');   // 讓上方顯示目前在第幾章
-      if (a.i > 3) toast('回到上次讀到的地方' + (chapterAt(a.i) ? `：${chapterAt(a.i)}` : ''));
+      if (a.i > 3) toast(chapterAt(a.i) ? tr('回到上次讀到的地方：{0}', chapterAt(a.i)) : tr('回到上次讀到的地方'));
     });
     // 字型、圖片晚一點載入會讓版面變高，再對準一次
     const again = () => { if (Date.now() - lastUserScroll > 1500) go(); };
@@ -913,22 +958,22 @@
     tts.stop();
     marks.hide(); $('#markList').innerHTML = '';
     current = null; headings = [];
-    $('#tocList').innerHTML = '<li class="hint">先加入一本書。</li>';
-    $('#barTitle').textContent = '捲軸書房';
-    document.title = '捲軸書房';
+    $('#tocList').innerHTML = `<li class="hint">${tr('先加入一本書。')}</li>`;
+    $('#barTitle').textContent = tr('捲軸書房');
+    document.title = tr('捲軸書房');
     book.className = '';
     book.innerHTML = `<div class="welcome">
-      <h1>捲軸書房</h1>
-      <p class="byline">不用翻頁，一路往下滑就能讀完整本書。</p>
+      <h1>${tr('捲軸書房')}</h1>
+      <p class="byline">${tr('不用翻頁，一路往下滑就能讀完整本書。')}</p>
       ${lead ? `<p>${esc(lead)}</p>` : ''}
       <ol>
-        <li>到 <a href="https://www.haodoo.net/" target="_blank" rel="noopener">好讀</a> 找到想看的書（例如喬治・歐威爾的《動物農莊》），按 <b>「下載 epub 檔」</b>。直式或橫式都可以，在這裡都會變成橫排閱讀。</li>
-        <li>回到這個頁面，按下面的 <b>「加入一本書」</b>，選剛剛下載的 .epub 檔。手機上通常在「下載」資料夾裡。</li>
-        <li>開始往下滑。上方「目錄」可以跳章節，「Aa」可以調字體大小和紙色，閱讀位置會自動記住。</li>
+        <li>${tr('到 <a href="https://www.haodoo.net/" target="_blank" rel="noopener">好讀</a> 找到想看的書（例如喬治・歐威爾的《動物農莊》），按 <b>「下載 epub 檔」</b>。直式或橫式都可以，在這裡都會變成橫排閱讀。')}</li>
+        <li>${tr('回到這個頁面，按下面的 <b>「加入一本書」</b>，選剛剛下載的 .epub 檔。手機上通常在「下載」資料夾裡。')}</li>
+        <li>${tr('開始往下滑。上方「目錄」可以跳章節，「Aa」可以調字體大小和紙色，閱讀位置會自動記住。')}</li>
       </ol>
-      <p class="center"><label class="add">＋ 加入一本書<input type="file" class="picker" id="pickWelcome" aria-label="加入一本書"></label></p>
+      <p class="center"><label class="add">${tr('＋ 加入一本書')}<input type="file" class="picker" id="pickWelcome" aria-label="${tr('加入一本書')}"></label></p>
       <p id="status" role="status"></p>
-      <p class="note">支援 epub 和 txt。好讀的 updb、prc、mobi 是給其他閱讀器用的格式，這裡讀不了，請選 epub。書存在你這支手機的瀏覽器裡，不會上傳給別人。</p>
+      <p class="note">${tr('支援 epub 和 txt。好讀的 updb、prc、mobi 是給其他閱讀器用的格式，這裡讀不了，請選 epub。書存在你這支手機的瀏覽器裡，不會上傳給別人。')}</p>
     </div>`;
     onScroll();
   }
@@ -943,7 +988,7 @@
       : Promise.resolve().then(() => { sampleFn = null; });
     // 直接問 Google 翻譯（網頁版用的免費介面），整理成「翻譯 + 各詞性意思」
     async function googleDirect(q, signal) {
-      const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-TW&hl=zh-TW&dt=t&dt=bd&q=' + encodeURIComponent(q);
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${target()}&hl=${target()}&dt=t&dt=bd&q=` + encodeURIComponent(q);
       const r = await fetch(url, { signal });
       if (!r.ok) return '';
       const data = await r.json();
@@ -954,6 +999,10 @@
       }
       return lines.filter(Boolean).join('\n');
     }
+    // 翻成哪種語言：繁體介面→繁體中文，简体介面→简体中文，English 介面→英文
+    const target = () => (LANG === 'en' ? 'en' : LANG === 'zh-Hans' ? 'zh-CN' : 'zh-TW');
+    const hasCjk = (t) => /[\u3400-\u9fff]/.test(t);
+    const needs = (t) => (target() === 'en' ? hasCjk(t) : isEnglish(t));
     const isEnglish = (t) => /[A-Za-z]/.test(t) && (t.match(/[\u3400-\u9fff]/g) || []).length < t.length * 0.2;
     function hide() { box.hidden = true; if (ctl) ctl.abort(); ctl = null; lastText = ''; }
     $('#transClose').onclick = hide;
@@ -968,9 +1017,49 @@
       rate_limited: '翻譯得太頻繁了，請稍等一下再選取。',
       session_expired: '登入已過期，請重新登入 Claude 後再試。',
     };
+    function buildPrompt(text, context) {
+      const tgt = target();
+      if (tgt === 'en') {
+        const isWord = text.replace(/\s/g, '').length <= 4;
+        return isWord
+          ? `You are a reading helper. The reader selected the Chinese word or phrase below in a Chinese book. Explain it in English.
+Plain text only, no Markdown, at most four lines:
+Line 1: the word, its pinyin, and its part of speech
+Line 2: what it means in this sentence
+Line 3: other common meanings (up to two, separated by commas; omit this line if none)
+Line 4: if it is an idiom or set phrase, one sentence on how it is used (omit otherwise)
+
+Selected: ${text}
+Sentence: ${context}`
+          : `Translate the Chinese text below into natural, fluent English. Output only the translation, with no notes.
+The surrounding text is only there to help with context; do not translate it.
+
+Text to translate: ${text}
+
+Surrounding text: ${context}`;
+      }
+      const lang = tgt === 'zh-CN' ? '简体中文（中国大陆用语）' : '繁體中文（台灣用語）';
+      const words = text.split(/\s+/).filter(Boolean).length;
+      return words <= 3
+        ? `你是英文閱讀小幫手。讀者在一本英文書裡選取了下面的英文單字或片語，請用${lang}解釋。
+只輸出純文字，不要 Markdown，最多四行：
+第一行：原文　音標（片語可省略音標）　詞性
+第二行：在這個句子裡的意思
+第三行：其他常見意思（最多兩個，用「、」隔開；沒有就省略這行）
+第四行：如果是片語或慣用語，用一句話說明用法（沒有就省略）
+
+選取的字：${text}
+所在的句子：${context}`
+        : `把下面這段英文翻成自然、通順的${lang}。只輸出譯文，不要加任何說明。
+前後文只是幫你理解語境，不用翻譯。
+
+要翻譯的英文：${text}
+
+前後文：${context}`;
+    }
     async function translate(text, context) {
       $('#transSrc').textContent = text;
-      $('#transGoogle').href = 'https://translate.google.com/?sl=en&tl=zh-TW&op=translate&text=' + encodeURIComponent(text);
+      $('#transGoogle').href = `https://translate.google.com/?sl=auto&tl=${target()}&op=translate&text=` + encodeURIComponent(text);
       const out = $('#transOut');
       box.hidden = false;
       await ready;
@@ -979,46 +1068,30 @@
         if (ctl) ctl.abort();
         ctl = new AbortController();
         const my = ctl;
-        out.className = 'out wait'; out.textContent = '翻譯中…';
+        out.className = 'out wait'; out.textContent = tr('翻譯中…');
         try {
-          let t = '';
-          try { t = await googleDirect(text, my.signal); } catch (e) { if (e && e.name === 'AbortError') throw e; }
-          if (!t) {   // 手機直接連不到時，改請自己的伺服器代問（有架伺服器時才有）
-            const r = await fetch('api/translate?q=' + encodeURIComponent(text), { signal: my.signal });
+          let res = '';
+          try { res = await googleDirect(text, my.signal); } catch (e) { if (e && e.name === 'AbortError') throw e; }
+          if (!res) {   // 手機直接連不到時，改請自己的伺服器代問（有架伺服器時才有）
+            const r = await fetch(`api/translate?tl=${target()}&q=` + encodeURIComponent(text), { signal: my.signal });
             const j = r.ok ? await r.json() : null;
-            t = j && j.text;
+            res = j && j.text;
           }
           if (ctl !== my) return;
-          if (!t) throw new Error('no text');
-          out.className = 'out'; out.textContent = t;
+          if (!res) throw new Error('no text');
+          out.className = 'out'; out.textContent = res;
         } catch (e) {
           if (ctl !== my || (e && e.name === 'AbortError')) return;
           out.className = 'out wait';
-          out.textContent = '現在無法翻譯（可能是網路不穩）。請稍後再選一次，或點下面的「在 Google 翻譯打開」。';
+          out.textContent = tr('現在無法翻譯（可能是網路不穩）。請稍後再選一次，或點下面的「在 Google 翻譯打開」。');
         }
         return;
       }
       if (ctl) ctl.abort();
       ctl = new AbortController();
       const my = ctl;
-      out.className = 'out wait'; out.textContent = '翻譯中…';
-      const words = text.split(/\s+/).filter(Boolean).length;
-      const prompt = words <= 3
-        ? `你是英文閱讀小幫手。讀者在一本英文書裡選取了下面的英文單字或片語，請用繁體中文解釋。
-只輸出純文字，不要 Markdown，最多四行：
-第一行：原文　KK 音標（片語可省略音標）　詞性
-第二行：在這個句子裡的中文意思
-第三行：其他常見意思（最多兩個，用「、」隔開；沒有就省略這行）
-第四行：如果是片語或慣用語，用一句話說明用法（沒有就省略）
-
-選取的字：${text}
-所在的句子：${context}`
-        : `把下面這段英文翻成自然、通順的繁體中文（台灣用語）。只輸出譯文，不要加任何說明。
-前後文只是幫你理解語境，不用翻譯。
-
-要翻譯的英文：${text}
-
-前後文：${context}`;
+      out.className = 'out wait'; out.textContent = tr('翻譯中…');
+      const prompt = buildPrompt(text, context);
       try {
         await sampleFn(prompt, {
           modelTier: 'quick', signal: my.signal,
@@ -1027,7 +1100,7 @@
       } catch (e) {
         if (ctl !== my || (e && e.code === 'cancelled')) return;
         out.className = 'out wait';
-        out.textContent = (e && e.text) ? e.text : (ERR[e && e.code] || '翻譯失敗了，請再選取一次，或改用下面的 Google 翻譯。');
+        out.textContent = (e && e.text) ? e.text : tr(ERR[e && e.code] || '翻譯失敗了，請再選取一次，或改用下面的 Google 翻譯。');
         if (e && (e.code === 'not_granted' || e.code === 'sampling_disabled')) sampleFn = null;
       }
     }
@@ -1036,7 +1109,7 @@
       const sel = getSelection();
       if (!sel || sel.isCollapsed || !sel.anchorNode || !book.contains(sel.anchorNode)) return;
       const text = sel.toString().replace(/\s+/g, ' ').trim();
-      if (!text || text.length > 1500 || text === lastText || !isEnglish(text)) return;
+      if (!text || text.length > 1500 || text === lastText || !needs(text)) return;
       lastText = text;
       translate(text, contextOf(sel));
     }
@@ -1096,7 +1169,7 @@
       const ol = $('#markList');
       const items = t.list.slice().sort((a, b) => a.sb - b.sb || a.so - b.so);
       ol.innerHTML = items.length ? items.map((m) => `<li><button data-m="${m.id}"><span class="snip"><span class="dot"></span>${esc(m.text)}</span>${chapterOf(m) ? `<span class="sub">${esc(chapterOf(m))}</span>` : ''}</button></li>`).join('')
-        : '<li class="hint">還沒有標記。選取一段文字，按上方的「畫黃線」就會出現在這裡。</li>';
+        : `<li class="hint">${tr('還沒有標記。選取一段文字，按上方的「畫黃線」就會出現在這裡。')}</li>`;
       ol.querySelectorAll('[data-m]').forEach((btn) => { btn.onclick = () => { closeDrawers(); t.goto(btn.dataset.m); }; });
     }
     function persist() {
@@ -1150,12 +1223,12 @@
       getSelection().removeAllRanges(); savedRange = null; hideBar();
       if (typeof trans !== 'undefined') trans.hide();
       persist();
-      toast('已畫黃線，可以在「目錄」裡的「我的黃線標記」找到');
+      toast(tr('已畫黃線，可以在「目錄」裡的「我的黃線標記」找到'));
     };
     $('#markDel').onclick = () => {
       if (!selectedId) return;
       unpaint(selectedId); t.list = t.list.filter((m) => m.id !== selectedId);
-      hideBar(); persist(); toast('已移除黃線');
+      hideBar(); persist(); toast(tr('已移除黃線'));
     };
     return t;
   })();
