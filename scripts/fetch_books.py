@@ -32,15 +32,60 @@ def epub_title(data):
     return m.group(1).strip() if m else ''
 
 
+def title_ok(b, title):
+    return b['expect'] in title and not any(x in title for x in b.get('exclude', []))
+
+
+def shrink(data):
+    """插畫版 epub 太大時，把大圖縮到長邊 800px、JPEG 品質 60，讓手機打開快一點。"""
+    if len(data) < 3_000_000:
+        return data
+    try:
+        from PIL import Image
+    except ImportError:
+        return data
+    src = zipfile.ZipFile(io.BytesIO(data))
+    out = io.BytesIO()
+    dst = zipfile.ZipFile(out, 'w')
+    for info in src.infolist():
+        raw = src.read(info.filename)
+        low = info.filename.lower()
+        if len(raw) > 40_000 and low.endswith(('.jpg', '.jpeg', '.png')):
+            try:
+                im = Image.open(io.BytesIO(raw))
+                im.thumbnail((800, 800))
+                buf = io.BytesIO()
+                if low.endswith('.png'):
+                    # 插圖多半是線稿，減成 64 色的 PNG 就看不出差別，但檔案小很多
+                    if im.mode not in ('P', 'L', '1'):
+                        im = im.convert('RGB').quantize(64)
+                    im.save(buf, 'PNG', optimize=True)
+                else:
+                    im.convert('RGB').save(buf, 'JPEG', quality=60, optimize=True)
+                if buf.tell() < len(raw):
+                    raw = buf.getvalue()
+            except Exception as e:  # noqa: BLE001
+                print(f'    keep {info.filename}: {e}')
+        kind = zipfile.ZIP_STORED if info.filename == 'mimetype' else zipfile.ZIP_DEFLATED
+        dst.writestr(info.filename, raw, compress_type=kind)
+    dst.close()
+    print(f'    shrunk {len(data)} -> {out.tell()} bytes')
+    return out.getvalue()
+
+
 def search_ids(b):
     """用 Gutendex（古騰堡書目的公開搜尋服務）找書號，回傳書名符合的前幾筆。"""
     q = urllib.parse.quote(b.get('search') or b['title'])
-    try:
-        data = json.loads(get(f'https://gutendex.com/books/?search={q}&languages={b["lang"]}'))
-    except Exception as e:  # noqa: BLE001
-        print(f'  {b["id"]}: search failed: {e}')
+    data = None
+    for _ in range(2):
+        try:
+            data = json.loads(get(f'https://gutendex.com/books/?search={q}&languages={b["lang"]}'))
+            break
+        except Exception as e:  # noqa: BLE001
+            print(f'  {b["id"]}: search failed: {e}')
+    if data is None:
         return []
-    ids = [r['id'] for r in data.get('results', []) if b['expect'] in r.get('title', '')]
+    ids = [r['id'] for r in data.get('results', []) if title_ok(b, r.get('title', ''))]
     print(f'  {b["id"]}: search {b.get("search") or b["title"]!r} -> {ids[:5]}')
     return ids[:5]
 
@@ -64,11 +109,15 @@ def main():
                     print(f'  {b["id"]}: {url} failed: {e}')
                     continue
                 print(f'  {b["id"]}: #{gid} title={title!r} size={len(data)}')
-                if b['expect'] not in title:
+                if not title_ok(b, title):
                     print(f'  {b["id"]}: title does not match {b["expect"]!r}, skipped')
                     break
+                small = shrink(data)
+                if len(small) > 12_000_000 and '-images' in url:
+                    print(f'  {b["id"]}: still {len(small)} bytes with pictures, using the text-only edition')
+                    continue
                 with open(os.path.join(OUT, b['id'] + '.epub'), 'wb') as f:
-                    f.write(data)
+                    f.write(small)
                 shelf.append({'id': b['id'], 'title': b['title'], 'author': b['author'], 'lang': b['lang'],
                               'file': b['id'] + '.epub', 'source': f'https://www.gutenberg.org/ebooks/{gid}'})
                 saved = True
@@ -85,9 +134,9 @@ def main():
                 except Exception as e:  # noqa: BLE001
                     print(f'  {b["id"]}: #{gid} failed: {e}')
                     continue
-                if b['expect'] in title:
+                if title_ok(b, title):
                     with open(os.path.join(OUT, b['id'] + '.epub'), 'wb') as f:
-                        f.write(data)
+                        f.write(shrink(data))
                     shelf.append({'id': b['id'], 'title': b['title'], 'author': b['author'], 'lang': b['lang'],
                                   'file': b['id'] + '.epub', 'source': f'https://www.gutenberg.org/ebooks/{gid}'})
                     saved = True
@@ -95,6 +144,9 @@ def main():
                     break
         if not saved:
             print(f'!! {b["id"]}: no matching download')
+            old = os.path.join(OUT, b['id'] + '.epub')
+            if os.path.exists(old):
+                os.remove(old)
     with open(os.path.join(OUT, 'index.json'), 'w', encoding='utf-8') as f:
         json.dump({'books': shelf}, f, ensure_ascii=False, indent=2)
     print(f'saved {len(shelf)} of {len(books)} books')

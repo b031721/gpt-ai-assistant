@@ -1,32 +1,312 @@
 [
-  { "id": "alice", "lang": "en", "title": "Alice's Adventures in Wonderland", "author": "Lewis Carroll", "expect": "Alice", "gutenberg": [11, 28885] },
-  { "id": "gatsby", "lang": "en", "title": "The Great Gatsby", "author": "F. Scott Fitzgerald", "expect": "Gatsby", "gutenberg": [64317] },
-  { "id": "pride", "lang": "en", "title": "Pride and Prejudice", "author": "Jane Austen", "expect": "Pride and Prejudice", "gutenberg": [1342] },
-  { "id": "sherlock", "lang": "en", "title": "The Adventures of Sherlock Holmes", "author": "Arthur Conan Doyle", "expect": "Sherlock", "gutenberg": [1661] },
-  { "id": "frankenstein", "lang": "en", "title": "Frankenstein", "author": "Mary Shelley", "expect": "Frankenstein", "gutenberg": [84] },
-  { "id": "peterpan", "lang": "en", "title": "Peter Pan", "author": "J. M. Barrie", "expect": "Peter Pan", "gutenberg": [16] },
-  { "id": "oz", "lang": "en", "title": "The Wonderful Wizard of Oz", "author": "L. Frank Baum", "expect": "Oz", "gutenberg": [55] },
-  { "id": "carol", "lang": "en", "title": "A Christmas Carol", "author": "Charles Dickens", "expect": "Christmas Carol", "gutenberg": [46] },
-  { "id": "littlewomen", "lang": "en", "title": "Little Women", "author": "Louisa May Alcott", "expect": "Little Women", "gutenberg": [37106, 514] },
-  { "id": "anne", "lang": "en", "title": "Anne of Green Gables", "author": "L. M. Montgomery", "expect": "Anne of Green Gables", "gutenberg": [45] },
-  { "id": "tomsawyer", "lang": "en", "title": "The Adventures of Tom Sawyer", "author": "Mark Twain", "expect": "Tom Sawyer", "gutenberg": [74] },
-  { "id": "treasure", "lang": "en", "title": "Treasure Island", "author": "Robert Louis Stevenson", "expect": "Treasure Island", "gutenberg": [120] },
-  { "id": "junglebook", "lang": "en", "title": "The Jungle Book", "author": "Rudyard Kipling", "expect": "Jungle Book", "gutenberg": [236] },
-  { "id": "secretgarden", "lang": "en", "title": "The Secret Garden", "author": "Frances Hodgson Burnett", "expect": "Secret Garden", "gutenberg": [113] },
-  { "id": "aesop", "lang": "en", "title": "Aesop's Fables", "author": "Aesop", "expect": "Aesop", "gutenberg": [11339, 21] },
-  { "id": "xiyouji", "lang": "zh", "title": "西遊記", "author": "吳承恩", "expect": "西遊記", "gutenberg": [23962] },
-  { "id": "sanguo", "lang": "zh", "title": "三國演義", "author": "羅貫中", "expect": "三國", "gutenberg": [23950] },
-  { "id": "hongloumeng", "lang": "zh", "title": "紅樓夢", "author": "曹雪芹", "expect": "紅樓夢", "gutenberg": [24264] },
-  { "id": "shuihu", "lang": "zh", "title": "水滸傳", "author": "施耐庵", "expect": "水滸", "gutenberg": [23863] },
-  { "id": "lunyu", "lang": "zh", "title": "論語", "author": "孔子弟子及再傳弟子", "expect": "論語", "gutenberg": [23839] },
-  { "id": "daodejing", "lang": "zh", "title": "道德經", "author": "老子", "expect": "道德經", "search": "道德經" },
-  { "id": "sunzi", "lang": "zh", "title": "孫子兵法", "author": "孫武", "expect": "孫子", "search": "孫子兵法" },
-  { "id": "zhuangzi", "lang": "zh", "title": "莊子", "author": "莊周", "expect": "莊子", "search": "莊子" },
-  { "id": "mengzi", "lang": "zh", "title": "孟子", "author": "孟子", "expect": "孟子", "search": "孟子" },
-  { "id": "tangshi", "lang": "zh", "title": "唐詩三百首", "author": "蘅塘退士 編", "expect": "唐詩", "search": "唐詩三百首" },
-  { "id": "sanzijing", "lang": "zh", "title": "三字經", "author": "王應麟", "expect": "三字經", "search": "三字經" },
-  { "id": "liaozhai", "lang": "zh", "title": "聊齋誌異", "author": "蒲松齡", "expect": "聊齋", "search": "聊齋" },
-  { "id": "rulin", "lang": "zh", "title": "儒林外史", "author": "吳敬梓", "expect": "儒林外史", "search": "儒林外史" },
-  { "id": "fengshen", "lang": "zh", "title": "封神演義", "author": "許仲琳", "expect": "封神", "search": "封神演義" },
-  { "id": "laocan", "lang": "zh", "title": "老殘遊記", "author": "劉鶚", "expect": "老殘", "search": "老殘遊記" }
+  {
+    "id": "alice",
+    "lang": "en",
+    "title": "Alice's Adventures in Wonderland",
+    "author": "Lewis Carroll",
+    "expect": "Alice",
+    "gutenberg": [
+      11,
+      28885
+    ]
+  },
+  {
+    "id": "gatsby",
+    "lang": "en",
+    "title": "The Great Gatsby",
+    "author": "F. Scott Fitzgerald",
+    "expect": "Gatsby",
+    "gutenberg": [
+      64317
+    ]
+  },
+  {
+    "id": "pride",
+    "lang": "en",
+    "title": "Pride and Prejudice",
+    "author": "Jane Austen",
+    "expect": "Pride and Prejudice",
+    "gutenberg": [
+      1342
+    ]
+  },
+  {
+    "id": "sherlock",
+    "lang": "en",
+    "title": "The Adventures of Sherlock Holmes",
+    "author": "Arthur Conan Doyle",
+    "expect": "Sherlock",
+    "gutenberg": [
+      1661
+    ]
+  },
+  {
+    "id": "frankenstein",
+    "lang": "en",
+    "title": "Frankenstein",
+    "author": "Mary Shelley",
+    "expect": "Frankenstein",
+    "gutenberg": [
+      84
+    ]
+  },
+  {
+    "id": "peterpan",
+    "lang": "en",
+    "title": "Peter Pan",
+    "author": "J. M. Barrie",
+    "expect": "Peter Pan",
+    "gutenberg": [
+      16
+    ]
+  },
+  {
+    "id": "oz",
+    "lang": "en",
+    "title": "The Wonderful Wizard of Oz",
+    "author": "L. Frank Baum",
+    "expect": "Oz",
+    "gutenberg": [
+      55
+    ]
+  },
+  {
+    "id": "carol",
+    "lang": "en",
+    "title": "A Christmas Carol",
+    "author": "Charles Dickens",
+    "expect": "Christmas Carol",
+    "gutenberg": [
+      46
+    ]
+  },
+  {
+    "id": "littlewomen",
+    "lang": "en",
+    "title": "Little Women",
+    "author": "Louisa May Alcott",
+    "expect": "Little Women",
+    "gutenberg": [
+      37106,
+      514
+    ]
+  },
+  {
+    "id": "anne",
+    "lang": "en",
+    "title": "Anne of Green Gables",
+    "author": "L. M. Montgomery",
+    "expect": "Anne of Green Gables",
+    "gutenberg": [
+      45
+    ]
+  },
+  {
+    "id": "tomsawyer",
+    "lang": "en",
+    "title": "The Adventures of Tom Sawyer",
+    "author": "Mark Twain",
+    "expect": "Tom Sawyer",
+    "gutenberg": [
+      74
+    ]
+  },
+  {
+    "id": "treasure",
+    "lang": "en",
+    "title": "Treasure Island",
+    "author": "Robert Louis Stevenson",
+    "expect": "Treasure Island",
+    "gutenberg": [
+      120
+    ]
+  },
+  {
+    "id": "junglebook",
+    "lang": "en",
+    "title": "The Jungle Book",
+    "author": "Rudyard Kipling",
+    "expect": "Jungle Book",
+    "gutenberg": [
+      236
+    ]
+  },
+  {
+    "id": "secretgarden",
+    "lang": "en",
+    "title": "The Secret Garden",
+    "author": "Frances Hodgson Burnett",
+    "expect": "Secret Garden",
+    "gutenberg": [
+      113
+    ]
+  },
+  {
+    "id": "aesop",
+    "lang": "en",
+    "title": "Aesop's Fables",
+    "author": "Aesop",
+    "expect": "Aesop",
+    "gutenberg": [
+      11339,
+      21
+    ]
+  },
+  {
+    "id": "xiyouji",
+    "lang": "zh",
+    "title": "西遊記",
+    "author": "吳承恩",
+    "expect": "西遊記",
+    "gutenberg": [
+      23962
+    ]
+  },
+  {
+    "id": "sanguo",
+    "lang": "zh",
+    "title": "三國演義",
+    "author": "羅貫中",
+    "expect": "三國",
+    "gutenberg": [
+      23950
+    ]
+  },
+  {
+    "id": "hongloumeng",
+    "lang": "zh",
+    "title": "紅樓夢",
+    "author": "曹雪芹",
+    "expect": "紅樓夢",
+    "gutenberg": [
+      24264
+    ]
+  },
+  {
+    "id": "shuihu",
+    "lang": "zh",
+    "title": "水滸傳",
+    "author": "施耐庵",
+    "expect": "水滸",
+    "gutenberg": [
+      23863
+    ]
+  },
+  {
+    "id": "lunyu",
+    "lang": "zh",
+    "title": "論語",
+    "author": "孔子弟子及再傳弟子",
+    "expect": "論語",
+    "gutenberg": [
+      23839
+    ]
+  },
+  {
+    "id": "daodejing",
+    "lang": "zh",
+    "title": "道德經",
+    "author": "老子",
+    "expect": "道德經",
+    "search": "道德經"
+  },
+  {
+    "id": "sunzi",
+    "lang": "zh",
+    "title": "孫子兵法",
+    "author": "孫武",
+    "expect": "孫子",
+    "search": "孫子兵法"
+  },
+  {
+    "id": "zhuangzi",
+    "lang": "zh",
+    "title": "莊子",
+    "author": "莊周",
+    "expect": "莊子",
+    "search": "南華",
+    "exclude": [
+      "故事"
+    ]
+  },
+  {
+    "id": "mengzi",
+    "lang": "zh",
+    "title": "孟子",
+    "author": "孟子",
+    "expect": "孟子",
+    "search": "孟子"
+  },
+  {
+    "id": "tangshi",
+    "lang": "zh",
+    "title": "唐詩三百首",
+    "author": "蘅塘退士 編",
+    "expect": "唐詩",
+    "search": "唐詩"
+  },
+  {
+    "id": "sanzijing",
+    "lang": "zh",
+    "title": "三字經",
+    "author": "王應麟",
+    "expect": "三字經",
+    "search": "三字經"
+  },
+  {
+    "id": "liaozhai",
+    "lang": "zh",
+    "title": "聊齋誌異",
+    "author": "蒲松齡",
+    "expect": "聊齋",
+    "search": "聊齋"
+  },
+  {
+    "id": "rulin",
+    "lang": "zh",
+    "title": "儒林外史",
+    "author": "吳敬梓",
+    "expect": "儒林外史",
+    "search": "儒林外史"
+  },
+  {
+    "id": "fengshen",
+    "lang": "zh",
+    "title": "封神演義",
+    "author": "許仲琳",
+    "expect": "封神",
+    "search": "封神"
+  },
+  {
+    "id": "laocan",
+    "lang": "zh",
+    "title": "老殘遊記",
+    "author": "劉鶚",
+    "expect": "老殘",
+    "search": "老殘遊記"
+  },
+  {
+    "id": "jinghuayuan",
+    "lang": "zh",
+    "title": "鏡花緣",
+    "author": "李汝珍",
+    "expect": "鏡花緣",
+    "search": "鏡花緣"
+  },
+  {
+    "id": "xixiangji",
+    "lang": "zh",
+    "title": "西廂記",
+    "author": "王實甫",
+    "expect": "西廂",
+    "search": "西廂"
+  },
+  {
+    "id": "caigentan",
+    "lang": "zh",
+    "title": "菜根譚",
+    "author": "洪應明",
+    "expect": "菜根",
+    "search": "菜根譚"
+  }
 ]
