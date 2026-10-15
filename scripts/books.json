@@ -1,8 +1,73 @@
 [
-  { "id": "alice", "lang": "en", "title": "Alice's Adventures in Wonderland", "author": "Lewis Carroll", "expect": "Alice", "gutenberg": [11, 28885] },
-  { "id": "xiyouji", "lang": "zh", "title": "西遊記", "author": "吳承恩", "expect": "西遊記", "gutenberg": [23962] },
-  { "id": "sanguo", "lang": "zh", "title": "三國演義", "author": "羅貫中", "expect": "三國", "gutenberg": [23950] },
-  { "id": "hongloumeng", "lang": "zh", "title": "紅樓夢", "author": "曹雪芹", "expect": "紅樓夢", "gutenberg": [24264] },
-  { "id": "shuihu", "lang": "zh", "title": "水滸傳", "author": "施耐庵", "expect": "水滸", "gutenberg": [23863] },
-  { "id": "lunyu", "lang": "zh", "title": "論語", "author": "孔子弟子及再傳弟子", "expect": "論語", "gutenberg": [23839] }
+  {
+    "id": "alice",
+    "lang": "en",
+    "title": "Alice's Adventures in Wonderland",
+    "author": "Lewis Carroll",
+    "expect": "Alice",
+    "gutenberg": [
+      11,
+      28885
+    ]
+  },
+  {
+    "id": "gatsby",
+    "lang": "en",
+    "title": "The Great Gatsby",
+    "author": "F. Scott Fitzgerald",
+    "expect": "Gatsby",
+    "gutenberg": [
+      64317
+    ]
+  },
+  {
+    "id": "xiyouji",
+    "lang": "zh",
+    "title": "西遊記",
+    "author": "吳承恩",
+    "expect": "西遊記",
+    "gutenberg": [
+      23962
+    ]
+  },
+  {
+    "id": "sanguo",
+    "lang": "zh",
+    "title": "三國演義",
+    "author": "羅貫中",
+    "expect": "三國",
+    "gutenberg": [
+      23950
+    ]
+  },
+  {
+    "id": "hongloumeng",
+    "lang": "zh",
+    "title": "紅樓夢",
+    "author": "曹雪芹",
+    "expect": "紅樓夢",
+    "gutenberg": [
+      24264
+    ]
+  },
+  {
+    "id": "shuihu",
+    "lang": "zh",
+    "title": "水滸傳",
+    "author": "施耐庵",
+    "expect": "水滸",
+    "gutenberg": [
+      23863
+    ]
+  },
+  {
+    "id": "lunyu",
+    "lang": "zh",
+    "title": "論語",
+    "author": "孔子弟子及再傳弟子",
+    "expect": "論語",
+    "gutenberg": [
+      23839
+    ]
+  }
 ]
