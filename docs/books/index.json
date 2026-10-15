@@ -1,0 +1,52 @@
+{
+  "books": [
+    {
+      "id": "alice",
+      "title": "Alice's Adventures in Wonderland",
+      "author": "Lewis Carroll",
+      "lang": "en",
+      "file": "alice.epub",
+      "source": "https://www.gutenberg.org/ebooks/11"
+    },
+    {
+      "id": "xiyouji",
+      "title": "西遊記",
+      "author": "吳承恩",
+      "lang": "zh",
+      "file": "xiyouji.epub",
+      "source": "https://www.gutenberg.org/ebooks/23962"
+    },
+    {
+      "id": "sanguo",
+      "title": "三國演義",
+      "author": "羅貫中",
+      "lang": "zh",
+      "file": "sanguo.epub",
+      "source": "https://www.gutenberg.org/ebooks/23950"
+    },
+    {
+      "id": "hongloumeng",
+      "title": "紅樓夢",
+      "author": "曹雪芹",
+      "lang": "zh",
+      "file": "hongloumeng.epub",
+      "source": "https://www.gutenberg.org/ebooks/24264"
+    },
+    {
+      "id": "shuihu",
+      "title": "水滸傳",
+      "author": "施耐庵",
+      "lang": "zh",
+      "file": "shuihu.epub",
+      "source": "https://www.gutenberg.org/ebooks/23863"
+    },
+    {
+      "id": "lunyu",
+      "title": "論語",
+      "author": "孔子弟子及再傳弟子",
+      "lang": "zh",
+      "file": "lunyu.epub",
+      "source": "https://www.gutenberg.org/ebooks/23839"
+    }
+  ]
+}
