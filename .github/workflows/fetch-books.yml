@@ -1,0 +1,32 @@
+name: Fetch bookshelf books
+
+# 下載 scripts/books.json 列出的公版書到 docs/books，並提交回同一個分支
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/books.json
+      - scripts/fetch_books.py
+      - .github/workflows/fetch-books.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download books
+        run: python scripts/fetch_books.py
+      - name: Commit books
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/books
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "Update bookshelf books from Project Gutenberg"
+          git push
