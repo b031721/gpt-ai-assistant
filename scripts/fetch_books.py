@@ -18,7 +18,7 @@ UA = {'User-Agent': 'scroll-reader-bookshelf/1.0 (GitHub Actions)'}
 
 def get(url):
     req = urllib.request.Request(url, headers=UA)
-    with urllib.request.urlopen(req, timeout=120) as r:
+    with urllib.request.urlopen(req, timeout=60) as r:
         return r.read()
 
 

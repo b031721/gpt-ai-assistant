@@ -12,6 +12,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: fetch-books
+  cancel-in-progress: true
+
 jobs:
   fetch:
     runs-on: ubuntu-latest
@@ -21,6 +25,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Download books
+        timeout-minutes: 15
         run: python scripts/fetch_books.py
       - name: Commit books
         run: |
@@ -29,4 +34,5 @@ jobs:
           git add docs/books
           if git diff --cached --quiet; then echo "No changes"; exit 0; fi
           git commit -m "Update bookshelf books from Project Gutenberg"
-          git push
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin HEAD:"${GITHUB_REF_NAME}"
