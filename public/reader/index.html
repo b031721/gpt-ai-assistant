@@ -201,7 +201,7 @@
   <div class="row">選取英文時自動翻譯成中文
     <div class="seg" id="transSeg"><button data-trans="1">開</button><button data-trans="0">關</button></div>
   </div>
-  <p class="hint">長按一個單字，或拖曳選取一句話，下方就會出現中文翻譯。翻譯由 Claude 完成，第一次使用時會詢問你是否允許。</p>
+  <p class="hint">長按一個單字，或拖曳選取一句話，下方就會出現中文翻譯。</p>
   <p class="hint">一直往下滑就能讀完整本書。往下讀時工具列會自動收起，往上滑一點或點一下文字就會出現。閱讀位置會自動記住。</p>
   <p class="hint">聽書時，從畫面上第一段開始念，畫面會跟著捲動。朗讀中點任何一段，就會改從那段開始念。手機螢幕關掉後，有些瀏覽器會停止朗讀。</p>
 </aside>
@@ -932,8 +932,22 @@
       box.hidden = false;
       await ready;
       if (!sampleFn) {
-        out.className = 'out wait';
-        out.textContent = '這裡無法直接翻譯（需要在 Claude 的網頁裡打開）。請點下面的「在 Google 翻譯打開」。';
+        // 放在自己網站上時：由網站的伺服器去問 Google 翻譯，結果一樣在這個小視窗顯示
+        if (ctl) ctl.abort();
+        ctl = new AbortController();
+        const my = ctl;
+        out.className = 'out wait'; out.textContent = '翻譯中…';
+        try {
+          const r = await fetch('api/translate?q=' + encodeURIComponent(text), { signal: my.signal });
+          const j = r.ok ? await r.json() : null;
+          if (ctl !== my) return;
+          if (!j || !j.text) throw new Error('no text');
+          out.className = 'out'; out.textContent = j.text;
+        } catch (e) {
+          if (ctl !== my || (e && e.name === 'AbortError')) return;
+          out.className = 'out wait';
+          out.textContent = '現在無法翻譯（可能是網路不穩）。請稍後再選一次，或點下面的「在 Google 翻譯打開」。';
+        }
         return;
       }
       if (ctl) ctl.abort();

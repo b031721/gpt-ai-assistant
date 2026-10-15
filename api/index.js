@@ -2,6 +2,7 @@ import express from 'express';
 import { handleEvents, printPrompts } from '../app/index.js';
 import config from '../config/index.js';
 import { validateLineSignature } from '../middleware/index.js';
+import { translate } from '../services/google-translate.js';
 import { reply } from '../services/line.js';
 import storage from '../storage/index.js';
 import { fetchVersion, getVersion } from '../utils/index.js';
@@ -15,6 +16,22 @@ app.use(express.json({
 }));
 
 app.use('/reader', express.static(new URL('../public/reader', import.meta.url).pathname));
+
+// 閱讀器的選字翻譯（放在自己網站上時使用，不需要登入 Claude）
+app.get('/reader/api/translate', async (req, res) => {
+  const q = String(req.query.q || '').slice(0, 1500);
+  if (!q.trim()) {
+    res.status(400).send({ error: 'q is required' });
+    return;
+  }
+  try {
+    const text = await translate({ q, tl: String(req.query.tl || 'zh-TW') });
+    res.set('Cache-Control', 'public, max-age=86400').send({ text });
+  } catch (err) {
+    console.error('[translate] error:', err.message);
+    res.status(502).send({ error: 'translate failed' });
+  }
+});
 
 app.get('/', (req, res) => {
   if (config.APP_URL) {
