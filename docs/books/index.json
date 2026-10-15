@@ -177,14 +177,6 @@
       "source": "https://www.gutenberg.org/ebooks/23864"
     },
     {
-      "id": "zhuangzi",
-      "title": "莊子",
-      "author": "莊周",
-      "lang": "zh",
-      "file": "zhuangzi.epub",
-      "source": "https://www.gutenberg.org/ebooks/23913"
-    },
-    {
       "id": "mengzi",
       "title": "孟子",
       "author": "孟子",
@@ -223,6 +215,22 @@
       "lang": "zh",
       "file": "laocan.epub",
       "source": "https://www.gutenberg.org/ebooks/23850"
+    },
+    {
+      "id": "jinghuayuan",
+      "title": "鏡花緣",
+      "author": "李汝珍",
+      "lang": "zh",
+      "file": "jinghuayuan.epub",
+      "source": "https://www.gutenberg.org/ebooks/23818"
+    },
+    {
+      "id": "caigentan",
+      "title": "菜根譚",
+      "author": "洪應明",
+      "lang": "zh",
+      "file": "caigentan.epub",
+      "source": "https://www.gutenberg.org/ebooks/24050"
     }
   ]
 }
