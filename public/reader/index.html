@@ -177,7 +177,7 @@
   <h3>書架 <button data-close aria-label="關閉">✕</button></h3>
   <ul id="shelfList"></ul>
   <label class="file">＋ 加入一本書（epub 或 txt）<input type="file" class="picker" id="pickShelf" aria-label="加入一本書"></label>
-  <p class="hint">書只存在這個瀏覽器裡，不會上傳到任何地方。換手機或清除瀏覽資料後需要重新加入。</p>
+  <p class="hint">在 Claude 網頁裡打開時，加入的書和閱讀位置會備份到你的 Claude 帳號（只有你看得到）。清除瀏覽資料、換手機或用電腦打開，書都還在。</p>
 </aside>
 <aside class="drawer" id="settings" aria-label="閱讀設定">
   <h3>閱讀設定 <button data-close aria-label="關閉">✕</button></h3>
@@ -253,8 +253,9 @@
             if (!d.objectStoreNames.contains('books')) d.createObjectStore('books', { keyPath: 'id' });
             if (!d.objectStoreNames.contains('pos')) d.createObjectStore('pos');
           };
-          req.onsuccess = () => resolve(req.result);
+          req.onsuccess = () => { const d = req.result; d.onversionchange = () => d.close(); resolve(d); };
           req.onerror = () => resolve(null);
+          req.onblocked = () => setTimeout(() => resolve(null), 3000);
         } catch { resolve(null); }
       });
       return this.p;
@@ -275,6 +276,96 @@
     getPos(id) { return this.run('readonly', (s) => s.get(id), 'pos'); },
     setPos(id, v) { return this.run('readwrite', (s) => s.put(v, id), 'pos'); },
   };
+
+  /* ---------- 雲端書櫃（存在你的 Claude 帳號裡）---------- */
+  // 書的內容存成這個網頁的檔案（assets），書單與閱讀位置存在只有你看得到的資料夾（db 的 data/users/<你>）
+  const cloud = (() => {
+    const c = { ok: false, canUpload: false, list: [] };
+    let store_ = null, assets = null, uid = null;
+    c.ready = (async () => {
+      try {
+        if (!window.claude || !window.claude.use) return;
+        const [d, a, u] = await Promise.all([window.claude.use('db'), window.claude.use('assets'), window.claude.use('user')]);
+        if (!d || !u) return;
+        uid = await u.id();
+        if (!uid) return;
+        store_ = d; assets = a; c.ok = true; c.canUpload = !!a;
+      } catch { c.ok = false; }
+    })();
+    const col = () => store_.collection('data/users/' + uid);
+    c.fetchList = async () => {
+      await c.ready;
+      if (!c.ok) return [];
+      try {
+        const snap = await col().get();
+        c.list = snap.docs.filter((d) => d.exists && d.data().asset).map((d) => ({ id: d.id, ...d.data() }));
+      } catch { /* 先用上次的清單 */ }
+      return c.list;
+    };
+    c.has = (id) => c.list.some((x) => x.id === id);
+    c.save = async (b) => {
+      await c.ready;
+      if (!c.ok || !c.canUpload) return 'unavailable';
+      try {
+        const blob = new Blob([JSON.stringify({ title: b.title, author: b.author || '', html: b.html })], { type: 'application/json' });
+        const r = await assets.upload(blob, { type: 'application/json' });
+        const doc = { title: b.title, author: b.author || '', asset: r.id, addedAt: b.addedAt || Date.now(), pos: null };
+        await col().doc(b.id).set(doc);
+        c.list = c.list.filter((x) => x.id !== b.id).concat([{ id: b.id, ...doc }]);
+        return 'ok';
+      } catch (e) { return (e && e.code) || 'upstream_error'; }
+    };
+    c.load = async (id) => {
+      const e = c.list.find((x) => x.id === id); if (!e) return null;
+      const r = await fetch('/_blob/' + e.asset);
+      if (!r.ok) throw new Error('雲端的書檔讀不到（' + r.status + '）');
+      const j = await r.json();
+      if (!j || typeof j.html !== 'string' || !j.html.trim()) throw new Error('雲端的書檔是空的');
+      return { id, title: j.title || e.title, author: j.author || e.author, html: j.html, addedAt: e.addedAt, synced: true };
+    };
+    c.remove = async (id) => {
+      const e = c.list.find((x) => x.id === id);
+      if (!c.ok || !e) return;
+      try { await col().doc(id).delete(); } catch {}
+      if (assets) { try { await assets.delete(e.asset); } catch {} }
+      c.list = c.list.filter((x) => x.id !== id);
+    };
+    // 閱讀位置：最多每 5 秒寫一次，離開頁面時馬上寫
+    let pending = null, timer = null, writing = false;
+    async function flush() {
+      timer = null;
+      if (!pending || writing || !c.ok) return;
+      const { id, a } = pending; pending = null; writing = true;
+      try { await col().doc(id).update({ pos: a }); const e = c.list.find((x) => x.id === id); if (e) e.pos = a; } catch {}
+      writing = false;
+      if (pending) timer = setTimeout(flush, 5000);
+    }
+    c.savePos = (id, a, now) => {
+      if (!c.ok || !c.has(id)) return;
+      pending = { id, a };
+      if (now) { clearTimeout(timer); flush(); } else if (!timer) timer = setTimeout(flush, 5000);
+    };
+    c.posOf = (id) => (c.list.find((x) => x.id === id) || {}).pos || null;
+    return c;
+  })();
+  // 請 Chrome 不要在空間不足時自動清掉這個網頁存的書
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {}
+
+  // 只在這台裝置上的書，自動補存到雲端（每次開啟頁面檢查一次）
+  async function syncUp() {
+    await cloud.fetchList();
+    if (!cloud.ok || !cloud.canUpload) return;
+    const local = (await db.all()) || [];
+    let n = 0;
+    for (const b of local) {
+      if (cloud.has(b.id) || b.cloudSkip) continue;
+      const r = await cloud.save(b);
+      if (r === 'ok') n++;
+      else if (r === 'too_large' || r === 'unsupported_type' || r === 'quota_or_state') { b.cloudSkip = r; db.put(b); }
+      else break;   // 暫時連不上就下次再試
+    }
+    if (n) { toast(`已把 ${n} 本書備份到你的 Claude 帳號`); refreshShelf(); }
+  }
 
   /* ---------- 閱讀設定 ---------- */
   const prefs = Object.assign({ font: 20, lh: 1.9, paper: '', rate: 0.9, voice: '', trans: 1 }, store.get('reader:prefs', {}));
@@ -586,11 +677,16 @@
       b.id = 'b' + Date.now().toString(36);
       b.addedAt = Date.now();
       const saved = await db.put(b);
-      if (saved === null) toast('這個瀏覽器不能存書，關掉頁面後要重新加入。');
-      else toast(`已加入《${b.title}》`);
       memory[b.id] = b;
       await refreshShelf();
       openBook(b.id);
+      status(`已加入《${b.title}》，正在備份到你的 Claude 帳號…`);
+      const r = await cloud.save(b);
+      if (r === 'ok') toast(`已加入《${b.title}》，也備份到你的 Claude 帳號了`);
+      else if (r === 'too_large') { b.cloudSkip = r; db.put(b); toast(`已加入《${b.title}》。這本書太大，沒辦法備份到雲端，只存在這台裝置。`); }
+      else if (saved === null) toast('這個瀏覽器不能存書，關掉頁面後要重新加入。');
+      else toast(`已加入《${b.title}》（只存在這台裝置）`);
+      refreshShelf();
     } catch (err) {
       console.error(err);
       status('讀取失敗：' + (err.message || err));
@@ -633,11 +729,13 @@
   async function refreshShelf() {
     if (!serverList) serverList = await serverBooks();
     const local = (await db.all()) || [];
-    const merged = [...local, ...Object.values(memory).filter((m) => !local.some((l) => l.id === m.id))]
-      .sort((a, b) => b.addedAt - a.addedAt).map(({ id, title, author }) => ({ id, title, author }));
+    const all = [...local, ...Object.values(memory).filter((m) => !local.some((l) => l.id === m.id))];
+    for (const cb of cloud.list) if (!all.some((l) => l.id === cb.id)) all.push(cb);
+    const merged = all.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0))
+      .map(({ id, title, author }) => ({ id, title, author, where: cloud.has(id) ? '已備份到 Claude 帳號' : (cloud.ok ? '只在這台裝置' : '') }));
     shelf = [...merged, ...serverList];
     $('#shelfList').innerHTML = shelf.length ? shelf.map((b) => `<li>
-        <button data-id="${esc(b.id)}" class="${current && current.id === b.id ? 'active' : ''}">${esc(b.title)}${b.author ? `<span class="sub">${esc(b.author)}</span>` : ''}</button>
+        <button data-id="${esc(b.id)}" class="${current && current.id === b.id ? 'active' : ''}">${esc(b.title)}${b.author ? `<span class="sub">${esc(b.author)}</span>` : ''}${b.where ? `<span class="sub">${esc(b.where)}</span>` : ''}</button>
         ${b.server ? '' : `<button class="del" data-del="${esc(b.id)}" aria-label="從書架移除">移除</button>`}
       </li>`).join('') : '<li class="hint">書架還是空的。</li>';
     $('#shelfList').querySelectorAll('[data-id]').forEach((btn) => { btn.onclick = () => { closeDrawers(); openBook(btn.dataset.id); }; });
@@ -645,14 +743,20 @@
       btn.onclick = async () => {
         if (btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = '確定？'; return; }
         const id = btn.dataset.del;
-        await db.del(id); delete memory[id];
+        await db.del(id); delete memory[id]; await cloud.remove(id);
         if (current && current.id === id) { current = null; welcome(); }
         refreshShelf();
       };
     });
   }
 
+  let opening = null;
   async function openBook(id) {
+    if (opening === id || (current && current.id === id && book.querySelector('h1'))) return;   // 同一本書已經在開
+    opening = id;
+    try { await openBookNow(id); } finally { if (opening === id) opening = null; }
+  }
+  async function openBookNow(id) {
     const entry = shelf.find((b) => b.id === id);
     if (!entry) { welcome(); return; }
     let b;
@@ -668,6 +772,10 @@
       }
     } else {
       b = memory[id] || await db.get(id);
+      if (!b && cloud.has(id)) {
+        toast('正在從你的 Claude 帳號下載這本書…');
+        try { b = await cloud.load(id); if (b) db.put(b); } catch (err) { toast('下載失敗：' + (err.message || err)); }
+      }
       if (!b) { welcome(); return; }
     }
     render(b);
@@ -696,7 +804,7 @@
     flushRun();
   }
 
-  function render(b) {
+  function render(b) { console.log('RENDER', b.id, (b.html||'').length);
     tts.stop();
     trans.hide();
     restoring = true;
@@ -739,14 +847,15 @@
     return name;
   }
   async function restorePosition(id) {
-    let a = store.get('reader:anchor:' + id, null) || await db.getPos(id);
+    const cands = [store.get('reader:anchor:' + id, null), await db.getPos(id), cloud.posOf(id)].filter(Boolean);
+    let a = cands.sort((x, y) => (y.at || 0) - (x.at || 0))[0] || null;
     if (!current || current.id !== id) return;
     if (!a) {
       const old = store.get('reader:pos:' + id, 0);   // 舊版存的是百分比
       requestAnimationFrame(() => { scrollTo({ top: old * maxScroll(), behavior: 'instant' }); restoring = false; onScroll(); });
       return;
     }
-    const go = () => { if (current && current.id === id) goAnchor(a); };
+    console.log('RESTORE', JSON.stringify(cands)); const go = () => { if (current && current.id === id) { goAnchor(a); console.log('GO', scrollY, document.documentElement.scrollHeight); } };
     requestAnimationFrame(() => {
       go();
       restoring = false; onScroll();
@@ -766,6 +875,7 @@
     a.at = Date.now();
     store.set('reader:anchor:' + current.id, a);
     db.setPos(current.id, a);
+    cloud.savePos(current.id, a, document.hidden);
   }
   addEventListener('pagehide', savePosition);
   document.addEventListener('visibilitychange', () => { if (document.hidden) savePosition(); });
@@ -788,7 +898,7 @@
       </ol>
       <p class="center"><label class="add">＋ 加入一本書<input type="file" class="picker" id="pickWelcome" aria-label="加入一本書"></label></p>
       <p id="status" role="status"></p>
-      <p class="note">支援 epub 和 txt。好讀的 updb、prc、mobi 是給其他閱讀器用的格式，這裡讀不了，請選 epub。書只存在你這台裝置的瀏覽器裡，不會上傳。</p>
+      <p class="note">支援 epub 和 txt。好讀的 updb、prc、mobi 是給其他閱讀器用的格式，這裡讀不了，請選 epub。加入的書會備份到你的 Claude 帳號，只有你看得到。</p>
     </div>`;
     onScroll();
   }
@@ -913,6 +1023,15 @@
   });
   ['touchstart', 'wheel', 'keydown'].forEach((ev) => addEventListener(ev, () => { tts.userScrollAt = Date.now(); }, { passive: true }));
 
+  cloud.fetchList().then(async () => {
+    if (!cloud.ok) return;
+    await refreshShelf();
+    if (!current && cloud.list.length) {   // 本機沒有書（例如被清掉了），直接打開雲端上最近讀的
+      const want = store.get('reader:last', null);
+      openBook(cloud.has(want) ? want : cloud.list.slice().sort((x, y) => ((y.pos && y.pos.at) || 0) - ((x.pos && x.pos.at) || 0))[0].id);
+    }
+    syncUp();
+  });
   refreshShelf().then(() => {
     const want = location.hash.slice(1) || store.get('reader:last', null);
     const id = shelf.some((b) => b.id === want) ? want : (shelf.find((b) => !b.server) || {}).id;
