@@ -410,19 +410,6 @@
     ]
   },
   {
-    "id": "adler",
-    "lang": "en",
-    "tag": "selfhelp",
-    "title": "Understanding Human Nature",
-    "author": "Alfred Adler",
-    "expect": "Human Nature",
-    "exclude": [
-      "Hume",
-      "Treatise"
-    ],
-    "search": "Adler Understanding Human Nature"
-  },
-  {
     "id": "publicspeaking",
     "lang": "en",
     "tag": "selfhelp",
@@ -440,7 +427,7 @@
     "tag": "selfhelp",
     "title": "Self-Help",
     "author": "Samuel Smiles",
-    "expect": "Self-Help",
+    "expect": "Self Help",
     "gutenberg": [
       935
     ],

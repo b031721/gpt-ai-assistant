@@ -33,7 +33,8 @@ def epub_title(data):
 
 
 def title_ok(b, title):
-    return b['expect'] in title and not any(x in title for x in b.get('exclude', []))
+    t = title.lower()   # 不分大小寫，例如 'As a man thinketh'
+    return b['expect'].lower() in t and not any(x.lower() in t for x in b.get('exclude', []))
 
 
 def shrink(data):
@@ -95,6 +96,15 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     shelf = []
     for b in books:
+        if b.get('local'):
+            # 自己做的書（例如 AI 翻譯的公版書中文版），檔案已經放在 docs/books，不用下載
+            if os.path.exists(os.path.join(OUT, b['file'])):
+                shelf.append({'id': b['id'], 'title': b['title'], 'author': b['author'], 'lang': b['lang'],
+                              'file': b['file'], 'tag': b.get('tag', ''), 'source': b.get('source', '')})
+                print(f'  {b["id"]}: local file {b["file"]}')
+            else:
+                print(f'!! {b["id"]}: local file {b["file"]} is missing')
+            continue
         saved = False
         ids = list(b.get('gutenberg', []))
         if not ids:
