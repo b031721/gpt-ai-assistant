@@ -408,5 +408,99 @@
     "gutenberg": [
       132
     ]
+  },
+  {
+    "id": "adler",
+    "lang": "en",
+    "tag": "selfhelp",
+    "title": "Understanding Human Nature",
+    "author": "Alfred Adler",
+    "expect": "Human Nature",
+    "exclude": [
+      "Hume",
+      "Treatise"
+    ],
+    "search": "Adler Understanding Human Nature"
+  },
+  {
+    "id": "publicspeaking",
+    "lang": "en",
+    "tag": "selfhelp",
+    "title": "The Art of Public Speaking",
+    "author": "Dale Carnegie, J. Berg Esenwein",
+    "expect": "Public Speaking",
+    "gutenberg": [
+      16317
+    ],
+    "search": "Art of Public Speaking"
+  },
+  {
+    "id": "selfhelpsmiles",
+    "lang": "en",
+    "tag": "selfhelp",
+    "title": "Self-Help",
+    "author": "Samuel Smiles",
+    "expect": "Self-Help",
+    "gutenberg": [
+      935
+    ],
+    "search": "Self-Help Smiles"
+  },
+  {
+    "id": "manthinketh",
+    "lang": "en",
+    "tag": "selfhelp",
+    "title": "As a Man Thinketh",
+    "author": "James Allen",
+    "expect": "Thinketh",
+    "gutenberg": [
+      4507
+    ],
+    "search": "As a Man Thinketh"
+  },
+  {
+    "id": "gettingrich",
+    "lang": "en",
+    "tag": "selfhelp",
+    "title": "The Science of Getting Rich",
+    "author": "Wallace D. Wattles",
+    "expect": "Getting Rich",
+    "search": "Science of Getting Rich"
+  },
+  {
+    "id": "meditations",
+    "lang": "en",
+    "tag": "selfhelp",
+    "title": "Meditations",
+    "author": "Marcus Aurelius",
+    "expect": "Meditations",
+    "gutenberg": [
+      2680
+    ],
+    "search": "Meditations Marcus Aurelius"
+  },
+  {
+    "id": "selfreliance",
+    "lang": "en",
+    "tag": "selfhelp",
+    "title": "Self-Reliance (Essays)",
+    "author": "Ralph Waldo Emerson",
+    "expect": "Essays",
+    "gutenberg": [
+      16643
+    ],
+    "search": "Emerson Essays First Series"
+  },
+  {
+    "id": "franklin",
+    "lang": "en",
+    "tag": "selfhelp",
+    "title": "The Autobiography of Benjamin Franklin",
+    "author": "Benjamin Franklin",
+    "expect": "Autobiography",
+    "gutenberg": [
+      20203
+    ],
+    "search": "Autobiography of Benjamin Franklin"
   }
 ]
