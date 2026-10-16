@@ -416,11 +416,11 @@
     },
     {
       "id": "manthinketh-zh",
-      "lang": "zh",
-      "tag": "selfhelp",
       "title": "我的人生思考（As a Man Thinketh 中文版）",
       "author": "詹姆士・艾倫 James Allen（Claude 譯）",
+      "lang": "zh",
       "file": "manthinketh-zh.txt",
+      "tag": "selfhelp",
       "source": "https://www.gutenberg.org/ebooks/4507"
     }
   ]
