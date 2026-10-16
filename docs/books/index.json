@@ -361,6 +361,24 @@
       "source": "https://www.gutenberg.org/ebooks/16317"
     },
     {
+      "id": "selfhelpsmiles",
+      "title": "Self-Help",
+      "author": "Samuel Smiles",
+      "lang": "en",
+      "file": "selfhelpsmiles.epub",
+      "tag": "selfhelp",
+      "source": "https://www.gutenberg.org/ebooks/935"
+    },
+    {
+      "id": "manthinketh",
+      "title": "As a Man Thinketh",
+      "author": "James Allen",
+      "lang": "en",
+      "file": "manthinketh.epub",
+      "tag": "selfhelp",
+      "source": "https://www.gutenberg.org/ebooks/4507"
+    },
+    {
       "id": "gettingrich",
       "title": "The Science of Getting Rich",
       "author": "Wallace D. Wattles",
