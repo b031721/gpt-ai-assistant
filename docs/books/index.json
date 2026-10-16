@@ -350,6 +350,51 @@
       "file": "artofwar.epub",
       "tag": "strategy",
       "source": "https://www.gutenberg.org/ebooks/132"
+    },
+    {
+      "id": "publicspeaking",
+      "title": "The Art of Public Speaking",
+      "author": "Dale Carnegie, J. Berg Esenwein",
+      "lang": "en",
+      "file": "publicspeaking.epub",
+      "tag": "selfhelp",
+      "source": "https://www.gutenberg.org/ebooks/16317"
+    },
+    {
+      "id": "gettingrich",
+      "title": "The Science of Getting Rich",
+      "author": "Wallace D. Wattles",
+      "lang": "en",
+      "file": "gettingrich.epub",
+      "tag": "selfhelp",
+      "source": "https://www.gutenberg.org/ebooks/59844"
+    },
+    {
+      "id": "meditations",
+      "title": "Meditations",
+      "author": "Marcus Aurelius",
+      "lang": "en",
+      "file": "meditations.epub",
+      "tag": "selfhelp",
+      "source": "https://www.gutenberg.org/ebooks/2680"
+    },
+    {
+      "id": "selfreliance",
+      "title": "Self-Reliance (Essays)",
+      "author": "Ralph Waldo Emerson",
+      "lang": "en",
+      "file": "selfreliance.epub",
+      "tag": "selfhelp",
+      "source": "https://www.gutenberg.org/ebooks/16643"
+    },
+    {
+      "id": "franklin",
+      "title": "The Autobiography of Benjamin Franklin",
+      "author": "Benjamin Franklin",
+      "lang": "en",
+      "file": "franklin.epub",
+      "tag": "selfhelp",
+      "source": "https://www.gutenberg.org/ebooks/20203"
     }
   ]
 }
