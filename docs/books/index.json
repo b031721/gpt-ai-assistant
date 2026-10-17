@@ -434,12 +434,12 @@
     },
     {
       "id": "crimepunish-zh",
-      "lang": "zh",
       "title": "罪與罰（第一部，Claude 譯）",
       "author": "杜斯妥也夫斯基 Fyodor Dostoevsky",
+      "lang": "zh",
       "file": "crimepunish-zh.txt",
-      "source": "https://www.gutenberg.org/ebooks/2554",
-      "tag": ""
+      "tag": "",
+      "source": "https://www.gutenberg.org/ebooks/2554"
     }
   ]
 }
