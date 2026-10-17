@@ -499,5 +499,16 @@
     "local": true,
     "file": "manthinketh-zh.txt",
     "source": "https://www.gutenberg.org/ebooks/4507"
+  },
+  {
+    "id": "crimepunish",
+    "lang": "en",
+    "title": "Crime and Punishment",
+    "author": "Fyodor Dostoevsky",
+    "expect": "Crime and Punishment",
+    "gutenberg": [
+      2554
+    ],
+    "search": "Crime and Punishment Dostoevsky"
   }
 ]
