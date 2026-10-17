@@ -422,6 +422,15 @@
       "file": "manthinketh-zh.txt",
       "tag": "selfhelp",
       "source": "https://www.gutenberg.org/ebooks/4507"
+    },
+    {
+      "id": "crimepunish",
+      "title": "Crime and Punishment",
+      "author": "Fyodor Dostoevsky",
+      "lang": "en",
+      "file": "crimepunish.epub",
+      "tag": "",
+      "source": "https://www.gutenberg.org/ebooks/2554"
     }
   ]
 }
