@@ -1203,9 +1203,26 @@
   }
   let lastUserScroll = 0;
   ['touchstart', 'wheel', 'keydown'].forEach((ev) => addEventListener(ev, () => { lastUserScroll = Date.now(); }, { passive: true }));
+  // 手機轉向（直放↔橫放）時版面寬度改變，同樣的捲動距離會對到別的段落：
+  // 記住轉向前讀到的那一段，版面穩定後再對回去，這段時間不存位置
+  let liveAnchor = null, resizing = null, lastW = innerWidth, rzTimer = 0;
+  function onResize() {
+    if (!current || innerWidth === lastW) { lastW = innerWidth; return; }   // 只有網址列縮放（高度變）不用處理
+    lastW = innerWidth;
+    if (!resizing) resizing = liveAnchor || anchor();
+    clearTimeout(rzTimer);
+    rzTimer = setTimeout(() => {
+      const a = resizing; resizing = null;
+      if (a && current && !pendingReturn) { goAnchor(a); setLastRead(a); liveAnchor = a; }
+      else if (a) setLastRead(a);
+    }, 350);
+  }
+  addEventListener('resize', onResize);
+  addEventListener('orientationchange', onResize);
   function savePosition() {
-    if (!current || restoring || pendingReturn) return;
+    if (!current || restoring || pendingReturn || resizing) return;
     const a = anchor();
+    liveAnchor = a;
     a.at = Date.now();
     setLastRead(a);
     store.set('reader:anchor:' + current.id, a);
@@ -1898,7 +1915,7 @@ Surrounding text: ${context}`;
   /* ---------- 自動更新到最新版 ---------- */
   // 網站每次更新都會產生新的 version.json。剛打開時發現有新版就直接換成新版；
   // 正在閱讀時只在上方顯示「更新」按鈕，不打斷閱讀。換版前先存好閱讀位置。
-  const APP_VERSION = 'bc57449a35';
+  const APP_VERSION = '5b6ed3e2a5';
   const updater = (() => {
     let latest = null, checking = false;
     const openedAt = Date.now();
