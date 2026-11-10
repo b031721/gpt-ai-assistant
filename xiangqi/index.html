@@ -59,7 +59,7 @@
   button.primary:hover { filter: brightness(1.08); }
   button:disabled { opacity: .5; cursor: default; }
   label.tg { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
-  #feed { flex: 1; overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+  #feed { position: relative; flex: 1; overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
   .msg { font-size: 14.5px; line-height: 1.6; padding: 8px 10px; border-radius: 10px; background: #f8f3ea; border-left: 4px solid #d9cbb3; white-space: normal; }
   .msg .who { font-size: 12px; color: var(--muted); display: block; margin-bottom: 2px; }
   .msg.user { background: #fbeeee; border-left-color: #e2a39d; }
@@ -77,9 +77,20 @@
   .ask { display: flex; gap: 6px; padding: 8px 14px 12px; }
   .ask input { flex: 1; font: inherit; font-size: 15px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; min-width: 0; }
   .moves { font-size: 12.5px; color: var(--muted); padding: 6px 14px; border-top: 1px solid var(--line); max-height: 64px; overflow-y: auto; }
+  #btnMore { display: none; }
   @media (max-width: 980px) {
-    .app { grid-template-columns: 1fr; height: auto; padding: 8px; }
-    .panel { height: 70vh; }
+    html, body { height: 100%; }
+    .app { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); height: 100%; gap: 8px; padding: 8px; }
+    .panel { min-height: 0; }
+    .head { padding: 6px 10px; }
+    .title h1 { display: none; }
+    .bar { flex-wrap: nowrap; overflow-x: auto; margin-top: 2px; }
+    .bar button { flex: none; }
+    #btnMore { display: inline-block; }
+    .more, .moves { display: none; }
+    .panel.open .more, .panel.open .moves { display: block; }
+    .msg { font-size: 16px; }
+    .ask { padding: 6px 10px 10px; }
   }
 </style>
 </head>
@@ -89,35 +100,31 @@
   <div class="panel">
     <div class="head">
       <div class="title"><h1>象棋教練</h1><span id="status">輪到你了（紅方）</span></div>
-      <div class="row">
-        <button id="btnNew">新局</button>
-        <button id="btnUndo">悔棋</button>
+      <div class="row bar">
         <button id="btnHint" class="primary">提示</button>
-        <button id="btnThink">我該怎麼想？</button>
+        <button id="btnUndo">悔棋</button>
+        <button id="btnThink">怎麼想？</button>
         <button id="btnEval">局勢</button>
-        <select id="selLevel" title="電腦難度">
-          <option value="easy">入門</option>
-          <option value="medium" selected>中級</option>
-          <option value="hard">高級</option>
-        </select>
+        <button id="btnNew">新局</button>
+        <button id="btnMore" type="button" aria-expanded="false">設定</button>
       </div>
-      <div class="row">
-        <label class="tg"><input type="checkbox" id="optCoach" checked>每步點評</label>
-        <label class="tg"><input type="checkbox" id="optPause" checked>失誤時先暫停</label>
-        <label class="tg"><input type="checkbox" id="optThreat" checked>標示危險棋子</label>
+      <div class="more">
+        <div class="row">
+          <select id="selLevel" title="電腦難度">
+            <option value="easy">入門</option>
+            <option value="medium" selected>中級</option>
+            <option value="hard">高級</option>
+          </select>
+          <label class="tg"><input type="checkbox" id="optCoach" checked>每步點評</label>
+          <label class="tg"><input type="checkbox" id="optPause" checked>失誤時先暫停</label>
+          <label class="tg"><input type="checkbox" id="optThreat" checked>標示危險棋子</label>
+        </div>
       </div>
     </div>
     <div id="feed"></div>
     <div class="moves" id="moves"></div>
-    <div class="chips">
-      <button data-q="現在該怎麼下？">現在該怎麼下？</button>
-      <button data-q="對方想幹嘛？">對方想幹嘛？</button>
-      <button data-q="為什麼剛剛那步不好？">剛剛那步為什麼不好？</button>
-      <button data-q="馬怎麼走？">馬怎麼走？</button>
-      <button data-q="開局要注意什麼？">開局要注意什麼？</button>
-    </div>
     <form class="ask" id="askForm">
-      <input id="askInput" placeholder="問教練任何問題，例如：炮要怎麼吃子？" autocomplete="off">
+      <input id="askInput" placeholder="問教練問題…" autocomplete="off">
       <button class="primary" type="submit">問</button>
     </form>
   </div>
@@ -693,7 +700,10 @@ function ENGINE(isWorker) {
       d.appendChild(box);
     }
     feed.appendChild(d);
-    feed.scrollTop = feed.scrollHeight;
+    // keep the start of the current exchange in view (your move + the coach's feedback)
+    if (type === 'user' || type === 'me') G.anchor = d;
+    const anchor = G.anchor && G.anchor.isConnected ? G.anchor : d;
+    feed.scrollTop = Math.min(feed.scrollHeight - feed.clientHeight, Math.max(0, anchor.offsetTop - 6));
     return d;
   }
 
@@ -773,7 +783,7 @@ function ENGINE(isWorker) {
     const wrap = $('#boardWrap');
     const narrow = window.innerWidth <= 980;
     const w = wrap.clientWidth || window.innerWidth;
-    const h = narrow ? window.innerHeight * 0.8 : window.innerHeight - 24;
+    const h = narrow ? window.innerHeight * 0.5 : window.innerHeight - 24;
     cell = Math.max(30, Math.floor(Math.min(w / 9.8, h / 10.8)));
     ox = cell * 0.9; oy = cell * 0.9;
     const W = cell * 8 + ox * 2; const H = cell * 9 + oy * 2;
@@ -1070,7 +1080,7 @@ function ENGINE(isWorker) {
     if (G.over) { G.busy = false; announceOver(); return; }
     if (opts().coach) await coachBeforeTurn(myGen);
     if (myGen !== G.gen) return;
-    G.busy = false; setStatus('輪到你了（紅方）'); draw();
+    G.busy = false; G.anchor = null; setStatus('輪到你了（紅方）'); draw();
   }
 
   function describeAiMove(bBefore, m, r) {
@@ -1335,7 +1345,9 @@ function ENGINE(isWorker) {
     addMsg('coach', `🔎 ${parts.join('')}${th && th.move ? '<br><span style="color:var(--muted);font-size:13px">（紅色箭頭是對方想走的棋）</span>' : ''}`);
   }
 
-  async function onQuestion(qRaw) {
+  async function onQuestion(q) { await answerQuestion(q); G.anchor = null; }
+
+  async function answerQuestion(qRaw) {
     const q = qRaw.trim();
     if (!q) return;
     addMsg('me', esc(q));
@@ -1408,7 +1420,10 @@ function ENGINE(isWorker) {
   $('#btnThink').onclick = () => thinkingGuide();
   $('#btnEval').onclick = () => evalPosition();
   $('#optThreat').onchange = () => draw();
-  document.querySelectorAll('.chips button').forEach((bt) => { bt.onclick = () => onQuestion(bt.dataset.q); });
+  $('#btnMore').onclick = () => {
+    const open = $('.panel').classList.toggle('open');
+    $('#btnMore').setAttribute('aria-expanded', String(open));
+  };
   $('#askForm').onsubmit = (e) => { e.preventDefault(); const v = $('#askInput').value; $('#askInput').value = ''; onQuestion(v); };
   window.addEventListener('resize', resize);
 
