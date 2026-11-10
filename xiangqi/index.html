@@ -1,0 +1,1414 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>象棋教練</title>
+<style>
+  :root {
+    --bg: #efe7d8;
+    --panel: #fffdf8;
+    --ink: #2b2420;
+    --muted: #7a6f66;
+    --line: #e2d8c6;
+    --red: #b8322a;
+    --black: #1f1f1f;
+    --good: #2f7d4a;
+    --warn: #b9770e;
+    --bad: #b8322a;
+    --accent: #8a5a2b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  }
+  .app {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 420px;
+    gap: 16px;
+    height: 100vh;
+    padding: 12px 16px;
+  }
+  #boardWrap { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; }
+  canvas { display: block; border-radius: 10px; box-shadow: 0 10px 30px rgba(60, 40, 20, .25); cursor: pointer; touch-action: manipulation; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .head { padding: 12px 14px 8px; border-bottom: 1px solid var(--line); }
+  .title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .title h1 { font-size: 20px; margin: 0; letter-spacing: 2px; }
+  #status { font-size: 13px; color: var(--muted); }
+  #status.thinking::after { content: " ⏳"; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+  button, select {
+    font: inherit; font-size: 14px;
+    border: 1px solid var(--line); background: #f7f1e6; color: var(--ink);
+    border-radius: 8px; padding: 6px 10px; cursor: pointer;
+  }
+  button:hover { background: #efe5d3; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { filter: brightness(1.08); }
+  button:disabled { opacity: .5; cursor: default; }
+  label.tg { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  #feed { flex: 1; overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { font-size: 14.5px; line-height: 1.6; padding: 8px 10px; border-radius: 10px; background: #f8f3ea; border-left: 4px solid #d9cbb3; white-space: normal; }
+  .msg .who { font-size: 12px; color: var(--muted); display: block; margin-bottom: 2px; }
+  .msg.user { background: #fbeeee; border-left-color: #e2a39d; }
+  .msg.ai { background: #eef0f3; border-left-color: #9aa3ae; }
+  .msg.good { border-left-color: var(--good); background: #eef7f0; }
+  .msg.warn { border-left-color: var(--warn); background: #fdf5e6; }
+  .msg.bad { border-left-color: var(--bad); background: #fcecea; }
+  .msg.coach { border-left-color: var(--accent); }
+  .msg.me { background: #fff; border: 1px solid var(--line); border-left: 4px solid #6d8fb5; align-self: flex-end; max-width: 90%; }
+  .msg ol, .msg ul { margin: 4px 0; padding-left: 20px; }
+  .msg .acts { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .mv { font-weight: 700; color: var(--accent); border-bottom: 1px dashed var(--accent); cursor: pointer; white-space: nowrap; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 14px 0; border-top: 1px solid var(--line); }
+  .chips button { font-size: 12.5px; padding: 4px 8px; border-radius: 999px; }
+  .ask { display: flex; gap: 6px; padding: 8px 14px 12px; }
+  .ask input { flex: 1; font: inherit; font-size: 15px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; min-width: 0; }
+  .moves { font-size: 12.5px; color: var(--muted); padding: 6px 14px; border-top: 1px solid var(--line); max-height: 64px; overflow-y: auto; }
+  @media (max-width: 980px) {
+    .app { grid-template-columns: 1fr; height: auto; padding: 8px; }
+    .panel { height: 70vh; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="boardWrap"><canvas id="board"></canvas></div>
+  <div class="panel">
+    <div class="head">
+      <div class="title"><h1>象棋教練</h1><span id="status">輪到你了（紅方）</span></div>
+      <div class="row">
+        <button id="btnNew">新局</button>
+        <button id="btnUndo">悔棋</button>
+        <button id="btnHint" class="primary">提示</button>
+        <button id="btnThink">我該怎麼想？</button>
+        <button id="btnEval">局勢</button>
+        <select id="selLevel" title="電腦難度">
+          <option value="easy">入門</option>
+          <option value="medium" selected>中級</option>
+          <option value="hard">高級</option>
+        </select>
+      </div>
+      <div class="row">
+        <label class="tg"><input type="checkbox" id="optCoach" checked>每步點評</label>
+        <label class="tg"><input type="checkbox" id="optPause" checked>失誤時先暫停</label>
+        <label class="tg"><input type="checkbox" id="optThreat" checked>標示危險棋子</label>
+      </div>
+    </div>
+    <div id="feed"></div>
+    <div class="moves" id="moves"></div>
+    <div class="chips">
+      <button data-q="現在該怎麼下？">現在該怎麼下？</button>
+      <button data-q="對方想幹嘛？">對方想幹嘛？</button>
+      <button data-q="為什麼剛剛那步不好？">剛剛那步為什麼不好？</button>
+      <button data-q="馬怎麼走？">馬怎麼走？</button>
+      <button data-q="開局要注意什麼？">開局要注意什麼？</button>
+    </div>
+    <form class="ask" id="askForm">
+      <input id="askInput" placeholder="問教練任何問題，例如：炮要怎麼吃子？" autocomplete="off">
+      <button class="primary" type="submit">問</button>
+    </form>
+  </div>
+</div>
+
+<script>
+// ===================== ENGINE-START =====================
+// Self-contained: serialized into a Web Worker via toString(), so it must not use outer variables.
+function ENGINE(isWorker) {
+  const K = 1, A = 2, B = 3, N = 4, R = 5, C = 6, P = 7;
+  const VAL = [0, 0, 200, 200, 400, 900, 450, 100];
+  const VALO = [0, 5000, 200, 200, 400, 900, 450, 100]; // for move ordering
+  const MATE = 30000, INF = 32000;
+  const DR = [-1, 1, 0, 0], DC = [0, 0, -1, 1];
+  const XR = [-1, -1, 1, 1], XC = [-1, 1, -1, 1];
+  const NR = [-2, -2, -1, 1, 2, 2, 1, -1], NC = [-1, 1, 2, 2, 1, -1, -2, -2];
+
+  // ---- piece-square tables (red's point of view, red home row = 9)
+  const PST = [];
+  for (let t = 0; t < 8; t += 1) PST[t] = new Int16Array(90);
+  for (let r = 0; r < 10; r += 1) {
+    for (let c = 0; c < 9; c += 1) {
+      const sq = r * 9 + c; const cd = Math.abs(c - 4);
+      let pw = 0;
+      if (r <= 4) {
+        pw = 80 + (cd <= 1 ? 30 : cd <= 2 ? 15 : 0);
+        pw += (r === 1 || r === 2) ? 30 : r === 3 ? 20 : r === 0 ? -40 : 5;
+      } else if (r === 5 || r === 6) pw = c === 4 ? 10 : 0;
+      PST[P][sq] = pw;
+      PST[N][sq] = (4 - cd) * 6 + (r <= 6 ? 15 : 0) + (r <= 4 ? 10 : 0) - (c === 0 || c === 8 ? 15 : 0) - (r === 9 ? 20 : 0);
+      PST[R][sq] = (4 - cd) * 2 + (r <= 6 ? 10 : 0) + (r === 9 ? -10 : 0) + (r <= 2 ? 10 : 0);
+      PST[C][sq] = (c === 4 ? 15 : 0) + (r === 7 ? 5 : 0) + (r <= 2 && c === 4 ? 10 : 0);
+      PST[K][sq] = r === 9 ? (c === 4 ? 10 : 0) : -15 * (9 - r);
+      PST[A][sq] = (r === 8 && c === 4) ? 10 : 0;
+      PST[B][sq] = (r === 7 && c === 4) ? 10 : (r === 9 && (c === 2 || c === 6)) ? 5 : 0;
+    }
+  }
+  const PVT = []; // PVT[p+7][sq] = value from red's point of view
+  for (let p = -7; p <= 7; p += 1) {
+    PVT[p + 7] = new Int16Array(90);
+    if (p === 0) continue;
+    for (let sq = 0; sq < 90; sq += 1) {
+      const r = (sq / 9) | 0; const c = sq % 9;
+      PVT[p + 7][sq] = p > 0 ? VAL[p] + PST[p][sq] : -(VAL[-p] + PST[-p][(9 - r) * 9 + c]);
+    }
+  }
+
+  // ---- zobrist (seeded so worker and page agree)
+  let seed = 0x2545F491;
+  const rnd = () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return seed | 0; };
+  const Z1 = []; const Z2 = [];
+  for (let i = 0; i < 15; i += 1) {
+    Z1[i] = new Int32Array(90); Z2[i] = new Int32Array(90);
+    for (let s = 0; s < 90; s += 1) { Z1[i][s] = rnd(); Z2[i][s] = rnd(); }
+  }
+  const ZS1 = rnd(); const ZS2 = rnd();
+
+  const START = (() => {
+    const a = new Array(90).fill(0);
+    const back = [R, N, B, A, K, A, B, N, R];
+    for (let c = 0; c < 9; c += 1) { a[c] = -back[c]; a[81 + c] = back[c]; }
+    a[19] = -C; a[25] = -C; a[64] = C; a[70] = C;
+    [0, 2, 4, 6, 8].forEach((c) => { a[27 + c] = -P; a[54 + c] = P; });
+    return a;
+  })();
+
+  function newState(arr, side) {
+    const S = { b: new Int8Array(90), side, h1: 0, h2: 0, kp: [-1, -1], ev: 0 };
+    for (let i = 0; i < 90; i += 1) {
+      const p = arr[i]; S.b[i] = p;
+      if (p) {
+        S.h1 ^= Z1[p + 7][i]; S.h2 ^= Z2[p + 7][i]; S.ev += PVT[p + 7][i];
+        if (p === K) S.kp[0] = i; else if (p === -K) S.kp[1] = i;
+      }
+    }
+    if (side === -1) { S.h1 ^= ZS1; S.h2 ^= ZS2; }
+    return S;
+  }
+
+  function make(S, m) {
+    const f = (m / 90) | 0; const t = m % 90; const b = S.b; const p = b[f]; const q = b[t];
+    S.h1 ^= Z1[p + 7][f] ^ Z1[p + 7][t] ^ ZS1;
+    S.h2 ^= Z2[p + 7][f] ^ Z2[p + 7][t] ^ ZS2;
+    S.ev += PVT[p + 7][t] - PVT[p + 7][f];
+    if (q) { S.h1 ^= Z1[q + 7][t]; S.h2 ^= Z2[q + 7][t]; S.ev -= PVT[q + 7][t]; }
+    b[t] = p; b[f] = 0;
+    if (p === K) S.kp[0] = t; else if (p === -K) S.kp[1] = t;
+    S.side = -S.side;
+    return q;
+  }
+
+  function unmake(S, m, q) {
+    const f = (m / 90) | 0; const t = m % 90; const b = S.b; const p = b[t];
+    b[f] = p; b[t] = q;
+    S.h1 ^= Z1[p + 7][f] ^ Z1[p + 7][t] ^ ZS1;
+    S.h2 ^= Z2[p + 7][f] ^ Z2[p + 7][t] ^ ZS2;
+    S.ev -= PVT[p + 7][t] - PVT[p + 7][f];
+    if (q) { S.h1 ^= Z1[q + 7][t]; S.h2 ^= Z2[q + 7][t]; S.ev += PVT[q + 7][t]; }
+    if (p === K) S.kp[0] = f; else if (p === -K) S.kp[1] = f;
+    S.side = -S.side;
+  }
+
+  // Is side s's king attacked (including facing kings)?
+  function inCheck(S, s) {
+    const b = S.b; const k = S.kp[s === 1 ? 0 : 1];
+    if (k < 0) return true;
+    const kr = (k / 9) | 0; const kc = k % 9; const o = -s;
+    for (let d = 0; d < 4; d += 1) {
+      const dr = DR[d]; const dc = DC[d];
+      let r = kr + dr; let c = kc + dc; let screen = false;
+      while (r >= 0 && r < 10 && c >= 0 && c < 9) {
+        const q = b[r * 9 + c];
+        if (q) {
+          if (!screen) {
+            if (q === o * R || (q === o * K && dc === 0)) return true;
+            screen = true;
+          } else { if (q === o * C) return true; break; }
+        }
+        r += dr; c += dc;
+      }
+    }
+    for (let i = 0; i < 8; i += 1) {
+      const dr = NR[i]; const dc = NC[i]; const r = kr + dr; const c = kc + dc;
+      if (r < 0 || r > 9 || c < 0 || c > 8) continue;
+      if (b[r * 9 + c] !== o * N) continue;
+      const leg = Math.abs(dr) === 2 ? (r - dr / 2) * 9 + c : r * 9 + (c - dc / 2);
+      if (b[leg] === 0) return true;
+    }
+    const r1 = kr + (s === 1 ? -1 : 1);
+    if (r1 >= 0 && r1 < 10 && b[r1 * 9 + kc] === o * P) return true;
+    if (kc > 0 && b[kr * 9 + kc - 1] === o * P) return true;
+    if (kc < 8 && b[kr * 9 + kc + 1] === o * P) return true;
+    return false;
+  }
+
+  function tryAdd(b, s, caps, out, f, to) {
+    const q = b[to];
+    if (q * s > 0) return;
+    if (caps && !q) return;
+    out.push(f * 90 + to);
+  }
+
+  function inPalace(s, r, c) {
+    if (c < 3 || c > 5) return false;
+    return s === 1 ? (r >= 7 && r <= 9) : (r >= 0 && r <= 2);
+  }
+
+  function gen(S, s, caps, out) {
+    const b = S.b;
+    for (let f = 0; f < 90; f += 1) {
+      const p = b[f];
+      if (p * s <= 0) continue;
+      const t = p * s; const r = (f / 9) | 0; const c = f % 9;
+      switch (t) {
+        case K:
+          for (let d = 0; d < 4; d += 1) {
+            const nr = r + DR[d]; const nc = c + DC[d];
+            if (inPalace(s, nr, nc)) tryAdd(b, s, caps, out, f, nr * 9 + nc);
+          }
+          break;
+        case A:
+          for (let d = 0; d < 4; d += 1) {
+            const nr = r + XR[d]; const nc = c + XC[d];
+            if (inPalace(s, nr, nc)) tryAdd(b, s, caps, out, f, nr * 9 + nc);
+          }
+          break;
+        case B:
+          for (let d = 0; d < 4; d += 1) {
+            const nr = r + 2 * XR[d]; const nc = c + 2 * XC[d];
+            if (nr < 0 || nr > 9 || nc < 0 || nc > 8) continue;
+            if (s === 1 ? nr < 5 : nr > 4) continue;
+            if (b[(r + XR[d]) * 9 + c + XC[d]]) continue;
+            tryAdd(b, s, caps, out, f, nr * 9 + nc);
+          }
+          break;
+        case N:
+          for (let d = 0; d < 8; d += 1) {
+            const nr = r + NR[d]; const nc = c + NC[d];
+            if (nr < 0 || nr > 9 || nc < 0 || nc > 8) continue;
+            const leg = Math.abs(NR[d]) === 2 ? (r + NR[d] / 2) * 9 + c : r * 9 + c + NC[d] / 2;
+            if (b[leg]) continue;
+            tryAdd(b, s, caps, out, f, nr * 9 + nc);
+          }
+          break;
+        case R:
+          for (let d = 0; d < 4; d += 1) {
+            let nr = r + DR[d]; let nc = c + DC[d];
+            while (nr >= 0 && nr < 10 && nc >= 0 && nc < 9) {
+              const to = nr * 9 + nc; const q = b[to];
+              if (!q) { if (!caps) out.push(f * 90 + to); } else { if (q * s < 0) out.push(f * 90 + to); break; }
+              nr += DR[d]; nc += DC[d];
+            }
+          }
+          break;
+        case C:
+          for (let d = 0; d < 4; d += 1) {
+            let nr = r + DR[d]; let nc = c + DC[d]; let screen = false;
+            while (nr >= 0 && nr < 10 && nc >= 0 && nc < 9) {
+              const to = nr * 9 + nc; const q = b[to];
+              if (!screen) {
+                if (!q) { if (!caps) out.push(f * 90 + to); } else screen = true;
+              } else if (q) { if (q * s < 0) out.push(f * 90 + to); break; }
+              nr += DR[d]; nc += DC[d];
+            }
+          }
+          break;
+        case P: {
+          const nr = r + (s === 1 ? -1 : 1);
+          if (nr >= 0 && nr < 10) tryAdd(b, s, caps, out, f, nr * 9 + c);
+          if (s === 1 ? r <= 4 : r >= 5) {
+            if (c > 0) tryAdd(b, s, caps, out, f, r * 9 + c - 1);
+            if (c < 8) tryAdd(b, s, caps, out, f, r * 9 + c + 1);
+          }
+          break;
+        }
+        default:
+      }
+    }
+    return out;
+  }
+
+  function legalMoves(S) {
+    const mv = gen(S, S.side, false, []); const res = [];
+    for (const m of mv) {
+      const s0 = S.side; const q = make(S, m);
+      if (!inCheck(S, s0)) res.push(m);
+      unmake(S, m, q);
+    }
+    return res;
+  }
+
+  // ---------------- search ----------------
+  let TT = new Map();
+
+  function search(S, opt) {
+    const t0 = Date.now(); const timeMs = opt.timeMs || 1000; const maxD = opt.maxDepth || 8;
+    const hist = new Set(opt.hist || []); const noise = opt.noise || 0;
+    const path = [];
+    let nodes = 0; let stopped = false; let canStop = false;
+    const killers = []; for (let i = 0; i < 128; i += 1) killers.push([0, 0]);
+    const histT = new Int32Array(8100);
+    let rootBest = 0; let rootScore = -INF;
+    if (TT.size > 600000) TT = new Map();
+
+    const evalS = () => {
+      let e = S.ev * S.side + 10;
+      if (noise) e += (((S.h1 ^ (S.h1 >>> 13)) & 255) / 255 - 0.5) * noise;
+      return e;
+    };
+    const timeUp = () => {
+      if (canStop && (nodes & 1023) === 0 && Date.now() - t0 > timeMs) stopped = true;
+      return stopped;
+    };
+    const order = (moves, ttm, ply) => {
+      const b = S.b; const sc = [];
+      for (let i = 0; i < moves.length; i += 1) {
+        const m = moves[i]; const q = b[m % 90]; let s;
+        if (m === ttm) s = 1e8;
+        else if (q) s = 1e7 + VALO[Math.abs(q)] * 16 - VALO[Math.abs(b[(m / 90) | 0])];
+        else if (killers[ply][0] === m) s = 9e6;
+        else if (killers[ply][1] === m) s = 8e6;
+        else s = histT[m];
+        sc.push([s, m]);
+      }
+      sc.sort((x, y) => y[0] - x[0]);
+      return sc.map((x) => x[1]);
+    };
+
+    function qs(alpha, beta, ply) {
+      nodes += 1;
+      if (timeUp()) return 0;
+      const stand = evalS();
+      if (stand >= beta) return stand;
+      if (stand > alpha) alpha = stand;
+      if (ply > 60) return stand;
+      const mv = order(gen(S, S.side, true, []), 0, Math.min(ply, 127));
+      for (const m of mv) {
+        const s0 = S.side; const q = make(S, m);
+        if (inCheck(S, s0)) { unmake(S, m, q); continue; }
+        const v = -qs(-beta, -alpha, ply + 1);
+        unmake(S, m, q);
+        if (stopped) return 0;
+        if (v > alpha) { if (v >= beta) return v; alpha = v; }
+      }
+      return alpha;
+    }
+
+    function nm(depth, alpha, beta, ply) {
+      if (ply > 0 && (hist.has(S.h1) || path.includes(S.h1))) return 0;
+      const chk = inCheck(S, S.side);
+      if (chk && ply < 24) depth += 1;
+      if (depth <= 0) return qs(alpha, beta, ply);
+      nodes += 1;
+      if (timeUp()) return 0;
+      const a0 = alpha;
+      const e = TT.get(S.h1); let ttm = 0;
+      if (e && e.h2 === S.h2) {
+        ttm = e.m;
+        if (ply > 0 && e.d >= depth) {
+          let v = e.v;
+          if (v > MATE - 500) v -= ply; else if (v < -MATE + 500) v += ply;
+          if (e.f === 0) return v;
+          if (e.f === 1 && v >= beta) return v;
+          if (e.f === 2 && v <= alpha) return v;
+        }
+      }
+      const kp = Math.min(ply, 127);
+      const mv = order(gen(S, S.side, false, []), ttm, kp);
+      let best = -INF; let bm = 0; let legal = 0;
+      path.push(S.h1);
+      for (const m of mv) {
+        const s0 = S.side; const q = make(S, m);
+        if (inCheck(S, s0)) { unmake(S, m, q); continue; }
+        legal += 1;
+        let v;
+        if (legal === 1) v = -nm(depth - 1, -beta, -alpha, ply + 1);
+        else {
+          v = -nm(depth - 1, -alpha - 1, -alpha, ply + 1);
+          if (!stopped && v > alpha && v < beta) v = -nm(depth - 1, -beta, -alpha, ply + 1);
+        }
+        unmake(S, m, q);
+        if (stopped) { path.pop(); return 0; }
+        if (v > best) { best = v; bm = m; if (ply === 0) { rootBest = m; rootScore = v; } }
+        if (v > alpha) {
+          alpha = v;
+          if (v >= beta) {
+            if (!q) {
+              if (killers[kp][0] !== m) { killers[kp][1] = killers[kp][0]; killers[kp][0] = m; }
+              histT[m] += depth * depth;
+            }
+            break;
+          }
+        }
+      }
+      path.pop();
+      if (legal === 0) return -MATE + ply;
+      let sv = best;
+      if (sv > MATE - 500) sv += ply; else if (sv < -MATE + 500) sv -= ply;
+      TT.set(S.h1, { h2: S.h2, d: depth, v: sv, f: best <= a0 ? 2 : (best >= beta ? 1 : 0), m: bm });
+      return best;
+    }
+
+    let best = 0; let bestScore = 0; let depthDone = 0;
+    for (let d = 1; d <= maxD; d += 1) {
+      canStop = d > 1;
+      rootBest = 0; rootScore = -INF;
+      const v = nm(d, -INF, INF, 0);
+      if (stopped) { if (rootBest) { best = rootBest; bestScore = rootScore; } break; }
+      best = rootBest; bestScore = v; depthDone = d;
+      if (!best) break;
+      if (Math.abs(v) > MATE - 100) break;
+      if (Date.now() - t0 > timeMs * 0.5) break;
+    }
+    if (!best) bestScore = inCheck(S, S.side) || legalMoves(S).length === 0 ? -MATE : 0;
+    // principal variation from TT
+    const pv = [];
+    if (best) {
+      const undo = [];
+      let m = best;
+      for (let i = 0; i < 8 && m; i += 1) {
+        const lm = legalMoves(S);
+        if (!lm.includes(m)) break;
+        pv.push(m); undo.push([m, make(S, m)]);
+        const e = TT.get(S.h1);
+        m = e && e.h2 === S.h2 ? e.m : 0;
+      }
+      for (let i = undo.length - 1; i >= 0; i -= 1) unmake(S, undo[i][0], undo[i][1]);
+    }
+    return { move: best, score: bestScore, depth: depthDone, pv, nodes, ms: Date.now() - t0 };
+  }
+
+  // ---------------- helpers for explanation ----------------
+  const NAMES_R = ['', '帥', '仕', '相', '傌', '俥', '炮', '兵'];
+  const NAMES_B = ['', '將', '士', '象', '馬', '車', '砲', '卒'];
+  const NUM_R = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  const NUM_B = ['', '１', '２', '３', '４', '５', '６', '７', '８', '９'];
+  const pieceName = (p) => (p > 0 ? NAMES_R[p] : NAMES_B[-p]);
+  const fileOf = (s, c) => (s === 1 ? 9 - c : c + 1);
+  const fileLabel = (s, c) => (s === 1 ? NUM_R : NUM_B)[fileOf(s, c)];
+
+  function notation(b, m) {
+    const f = (m / 90) | 0; const t = m % 90; const p = b[f];
+    if (!p) return '?';
+    const s = p > 0 ? 1 : -1; const ty = p * s;
+    const fr = (f / 9) | 0; const fc = f % 9; const tr = (t / 9) | 0; const tc = t % 9;
+    const NUM = s === 1 ? NUM_R : NUM_B;
+    const same = [];
+    for (let r = 0; r < 10; r += 1) if (b[r * 9 + fc] === p) same.push(r);
+    let head;
+    if (same.length >= 2) {
+      same.sort((x, y) => (s === 1 ? x - y : y - x));
+      const idx = same.indexOf(fr);
+      const tags = same.length === 2 ? ['前', '後'] : same.length === 3 ? ['前', '中', '後'] : ['前', '二', '三', '四', '五'];
+      head = tags[idx] + pieceName(p);
+    } else head = pieceName(p) + NUM[fileOf(s, fc)];
+    let act;
+    if (tr === fr) act = `平${NUM[fileOf(s, tc)]}`;
+    else {
+      const fwd = s === 1 ? tr < fr : tr > fr;
+      act = (fwd ? '進' : '退') + ((ty === N || ty === B || ty === A) ? NUM[fileOf(s, tc)] : NUM[Math.abs(tr - fr)]);
+    }
+    return head + act;
+  }
+
+  function applyArr(b, m) {
+    const a = Array.from(b); const f = (m / 90) | 0; const t = m % 90;
+    a[t] = a[f]; a[f] = 0; return a;
+  }
+
+  // squares of side `by` that can legally capture on sq (own piece there is treated as enemy => defenders)
+  function attackersOf(b, sq, by) {
+    const arr = Array.from(b); const orig = arr[sq];
+    if (Math.abs(orig) === K) return [];
+    if (orig && Math.sign(orig) === by) arr[sq] = -orig;
+    if (!arr[sq]) return [];
+    const S = newState(arr, by); const res = [];
+    for (const m of gen(S, by, true, [])) {
+      if (m % 90 !== sq) continue;
+      const q = make(S, m);
+      if (!inCheck(S, by)) res.push((m / 90) | 0);
+      unmake(S, m, q);
+    }
+    return res;
+  }
+
+  // pieces of side s that are attacked and (undefended or attacked by a cheaper piece)
+  function hanging(b, s) {
+    const out = [];
+    for (let sq = 0; sq < 90; sq += 1) {
+      const p = b[sq];
+      if (p * s <= 0 || Math.abs(p) === K) continue;
+      const atk = attackersOf(b, sq, -s);
+      if (!atk.length) continue;
+      const def = attackersOf(b, sq, s);
+      const minAtk = Math.min(...atk.map((x) => VAL[Math.abs(b[x])]));
+      if (!def.length || minAtk < VAL[Math.abs(p)]) out.push({ sq, atk, def, val: VAL[Math.abs(p)] });
+    }
+    out.sort((x, y) => y.val - x.val);
+    return out;
+  }
+
+  function handle(msg) {
+    const S = newState(msg.b, msg.side);
+    if (msg.cmd === 'search') return search(S, msg.opts || {});
+    if (msg.cmd === 'analyze') {
+      const hist = msg.hist || [];
+      const pre = search(S, { timeMs: msg.timeMs || 700, maxDepth: 10, hist });
+      const preHash = S.h1;
+      make(S, msg.move);
+      let post;
+      if (!legalMoves(S).length) post = { move: 0, score: -MATE, depth: 0, pv: [] };
+      else post = search(S, { timeMs: (msg.timeMs || 700) * 2, maxDepth: Math.max(1, pre.depth - 1), hist: hist.concat([preHash]) });
+      return {
+        best: pre.move, bestScore: pre.score, bestPv: pre.pv, depth: pre.depth,
+        userScore: -post.score, reply: post.move, replyPv: post.pv,
+      };
+    }
+    if (msg.cmd === 'threat') {
+      // what would the opponent do if we "passed"?
+      if (inCheck(S, S.side)) return { inCheck: true };
+      S.side = -S.side; S.h1 ^= ZS1; S.h2 ^= ZS2;
+      const base = S.ev * S.side;
+      const r = search(S, { timeMs: msg.timeMs || 500, maxDepth: 4, hist: [] });
+      return { move: r.move, score: r.score, base, pv: r.pv };
+    }
+    return null;
+  }
+
+  if (isWorker) {
+    self.onmessage = (e) => {
+      let res = null;
+      try { res = handle(e.data); } catch (err) { res = { error: String(err) }; }
+      self.postMessage({ id: e.data.id, res });
+    };
+  }
+
+  return {
+    K, A, B, N, R, C, P, VAL, MATE, START,
+    newState, make, unmake, inCheck, gen, legalMoves, search, handle,
+    notation, pieceName, fileLabel, applyArr, attackersOf, hanging,
+  };
+}
+// ===================== ENGINE-END =====================
+</script>
+
+<script>
+(() => {
+  const E = ENGINE(false);
+  const { K, A, B, N, R, C, P, MATE } = E;
+  const $ = (s) => document.querySelector(s);
+
+  // ---------- worker bridge ----------
+  let worker = null;
+  try {
+    const url = URL.createObjectURL(new Blob([`(${ENGINE.toString()})(true);`], { type: 'text/javascript' }));
+    worker = new Worker(url);
+  } catch (e) { worker = null; }
+  let reqId = 0; const pending = new Map();
+  if (worker) worker.onmessage = (e) => { const cb = pending.get(e.data.id); pending.delete(e.data.id); if (cb) cb(e.data.res); };
+  function ask(cmd, payload) {
+    return new Promise((resolve) => {
+      const msg = { cmd, ...payload };
+      if (!worker) { setTimeout(() => resolve(E.handle(msg)), 20); return; }
+      reqId += 1; msg.id = reqId; pending.set(reqId, resolve); worker.postMessage(msg);
+    });
+  }
+
+  const LEVELS = {
+    easy: { maxDepth: 2, timeMs: 400, noise: 160 },
+    medium: { maxDepth: 6, timeMs: 900 },
+    hard: { maxDepth: 16, timeMs: 2500 },
+  };
+
+  // ---------- game state ----------
+  const G = {};
+  const opts = () => ({
+    coach: $('#optCoach').checked, pause: $('#optPause').checked, threat: $('#optThreat').checked,
+  });
+
+  function resetGame() {
+    G.S = E.newState(E.START, 1);
+    G.moves = []; G.h1s = [G.S.h1]; G.keys = [`${G.S.h1}:${G.S.h2}`];
+    G.over = null; G.busy = false; G.awaiting = false;
+    G.selected = -1; G.targets = []; G.lastMove = 0; G.arrow = null;
+    G.hintData = null; G.hintStage = 0; G.marks = []; G.focus = -1;
+    G.lastAnalysis = null; G.lastAi = null; G.threat = null; G.chat = [];
+    G.gen = (G.gen || 0) + 1;
+    $('#feed').innerHTML = '';
+    addMsg('coach', `歡迎！你執<b style="color:var(--red)">紅方</b>（下方），先走。點一下棋子再點目的地就能走棋。<br>
+      我會在你每一步之後點評：好棋會稱讚你，走得不好會告訴你<b>為什麼</b>、<b>對方會怎麼回應</b>、以及<b>更好的想法</b>。
+      不知道怎麼走時按「提示」（按一次給思路，再按一次給答案），或按「我該怎麼想？」讓我帶你一步步思考。也可以在下方直接問我問題。`);
+    updateMoves(); setStatus('輪到你了（紅方）'); draw();
+  }
+
+  const cloneBoard = () => Array.from(G.S.b);
+  const histBefore = () => G.h1s.slice(0, -1);
+  const sideName = (s) => (s === 1 ? '紅方' : '黑方');
+  const sqName = (sq, s = 1) => `${E.fileLabel(s, sq % 9)}路`;
+
+  function setStatus(t, thinking = false) {
+    const el = $('#status'); el.textContent = t; el.classList.toggle('thinking', thinking);
+  }
+
+  function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+  // clickable move label: shows an arrow on the board if the position is still the same
+  function mvSpan(b, m) {
+    if (!m) return '';
+    return `<span class="mv" data-m="${m}" data-ply="${G.moves.length}">${E.notation(b, m)}</span>`;
+  }
+
+  function addMsg(type, html, actions) {
+    const feed = $('#feed');
+    const d = document.createElement('div');
+    d.className = `msg ${type}`;
+    const who = { coach: '教練', good: '教練', warn: '教練', bad: '教練', ai: '電腦（黑方）', user: '你（紅方）', me: '你問', system: '' }[type] || '';
+    d.innerHTML = (who ? `<span class="who">${who}</span>` : '') + html;
+    if (actions && actions.length) {
+      const box = document.createElement('div'); box.className = 'acts';
+      actions.forEach(([label, fn, cls]) => {
+        const bt = document.createElement('button'); bt.textContent = label; if (cls) bt.className = cls;
+        bt.onclick = () => { box.querySelectorAll('button').forEach((x) => { x.disabled = true; }); fn(); };
+        box.appendChild(bt);
+      });
+      d.appendChild(box);
+    }
+    feed.appendChild(d);
+    feed.scrollTop = feed.scrollHeight;
+    return d;
+  }
+
+  $('#feed').addEventListener('click', (e) => {
+    const el = e.target.closest('.mv');
+    if (!el) return;
+    const m = Number(el.dataset.m); const ply = Number(el.dataset.ply);
+    if (ply === G.moves.length) { G.arrow = { m, color: 'rgba(40,140,80,.85)' }; draw(); }
+  });
+
+  function updateMoves() {
+    const parts = [];
+    for (let i = 0; i < G.moves.length; i += 2) {
+      const a = G.moves[i]; const b = G.moves[i + 1];
+      parts.push(`${i / 2 + 1}. ${a.nota}${b ? ` ${b.nota}` : ''}`);
+    }
+    const el = $('#moves'); el.textContent = parts.length ? `棋譜：${parts.join('　')}` : '棋譜：（尚未開始）';
+    el.scrollTop = el.scrollHeight;
+  }
+
+  // ---------- text helpers ----------
+  function scoreText(v) {
+    if (v > MATE - 300) return `你已經有殺棋了（約 ${Math.ceil((MATE - v) / 2)} 步內可以將死對方）！`;
+    if (v < -MATE + 300) return `危險！對方有殺棋（約 ${Math.ceil((MATE + v) / 2)} 步內）。`;
+    const x = v / 100; const a = Math.abs(x);
+    const eq = a >= 8 ? '（大約一個車）' : a >= 3.5 ? '（大約一個馬或炮）' : a >= 1.8 ? '（大約一個仕/相或過河兵）' : '';
+    if (a < 0.4) return '雙方大致均勢。';
+    if (a < 1.2) return x > 0 ? '你稍微佔優。' : '對方稍微佔優。';
+    return x > 0 ? `你領先約 ${a.toFixed(1)} 個兵的價值${eq}。` : `你落後約 ${a.toFixed(1)} 個兵的價值${eq}。`;
+  }
+
+  function lossText(loss) { return `大約吃虧 ${(loss / 100).toFixed(1)} 個兵的價值`; }
+
+  function names(b, sqs) { return [...new Set(sqs.map((s) => E.pieceName(b[s])))].join('、'); }
+
+  // what does move m (on board b) accomplish? side = mover
+  function moveReason(b, m, side) {
+    const f = (m / 90) | 0; const t = m % 90; const p = b[f]; const q = b[t]; const ty = Math.abs(p);
+    const reasons = [];
+    const enemyWord = side === 1 ? '對方' : '你';
+    if (q) reasons.push(`吃掉${enemyWord}的${E.pieceName(q)}`);
+    const after = E.applyArr(b, m);
+    const S2 = E.newState(after, -side);
+    if (E.inCheck(S2, -side)) reasons.push(E.legalMoves(S2).length ? '將軍' : '將死對方');
+    const hb = E.hanging(b, side); const ha = E.hanging(after, side);
+    if (hb.some((h) => h.sq === f) && !ha.some((h) => h.sq === t)) reasons.push(`把受到威脅的${E.pieceName(p)}移到安全的位置`);
+    const saved = hb.filter((h) => h.sq !== f && after[h.sq] === b[h.sq] && !ha.some((x) => x.sq === h.sq));
+    if (saved.length) reasons.push(`保護了原本有危險的${names(b, saved.map((h) => h.sq))}`);
+    const eb = E.hanging(b, -side).map((h) => h.sq);
+    const ea = E.hanging(after, -side).filter((h) => !eb.includes(h.sq) && h.atk.includes(t));
+    if (ea.length) reasons.push(`同時攻擊${enemyWord}的${names(after, ea.map((h) => h.sq))}`);
+    if (!reasons.length) {
+      const fr = (f / 9) | 0; const tc = t % 9; const home = side === 1 ? 9 : 0;
+      if ((ty === R || ty === N) && fr === home) reasons.push(`把${E.pieceName(p)}出動，讓大子早點發揮作用`);
+      else if (ty === C && tc === 4) reasons.push('炮佔中路，對對方的中路和將帥施加壓力');
+      else if (ty === P && (side === 1 ? ((t / 9) | 0) <= 4 && fr >= 5 : ((t / 9) | 0) >= 5 && fr <= 4)) reasons.push('兵過河，過河後可以橫走，威力變大');
+      else if (ty === R) reasons.push('讓車佔據更通暢的線路');
+      else reasons.push('改善子力位置，為後續進攻或防守作準備');
+    }
+    return reasons.join('，');
+  }
+
+  function pvText(b, pv, max = 5) {
+    const out = []; let a = Array.from(b);
+    for (let i = 0; i < Math.min(pv.length, max); i += 1) {
+      out.push(E.notation(a, pv[i])); a = E.applyArr(a, pv[i]);
+    }
+    return out.join(' → ');
+  }
+
+  // ---------- board drawing ----------
+  const cv = $('#board'); const ctx = cv.getContext('2d');
+  let cell = 60; let ox = 60; let oy = 60;
+  let anim = null;
+
+  function resize() {
+    const wrap = $('#boardWrap');
+    const narrow = window.innerWidth <= 980;
+    const w = wrap.clientWidth || window.innerWidth;
+    const h = narrow ? window.innerHeight * 0.8 : window.innerHeight - 24;
+    cell = Math.max(30, Math.floor(Math.min(w / 9.8, h / 10.8)));
+    ox = cell * 0.9; oy = cell * 0.9;
+    const W = cell * 8 + ox * 2; const H = cell * 9 + oy * 2;
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = W * dpr; cv.height = H * dpr; cv.style.width = `${W}px`; cv.style.height = `${H}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+
+  const X = (c) => ox + c * cell; const Y = (r) => oy + r * cell;
+
+  function drawGrid() {
+    const W = cell * 8 + ox * 2; const H = cell * 9 + oy * 2;
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#f2d7a0'); g.addColorStop(1, '#e0b874');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#6b4a24'; ctx.lineWidth = 3;
+    ctx.strokeRect(X(0) - 6, Y(0) - 6, cell * 8 + 12, cell * 9 + 12);
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    for (let r = 0; r < 10; r += 1) { ctx.moveTo(X(0), Y(r)); ctx.lineTo(X(8), Y(r)); }
+    for (let c = 0; c < 9; c += 1) {
+      if (c === 0 || c === 8) { ctx.moveTo(X(c), Y(0)); ctx.lineTo(X(c), Y(9)); } else {
+        ctx.moveTo(X(c), Y(0)); ctx.lineTo(X(c), Y(4)); ctx.moveTo(X(c), Y(5)); ctx.lineTo(X(c), Y(9));
+      }
+    }
+    // palaces
+    ctx.moveTo(X(3), Y(0)); ctx.lineTo(X(5), Y(2)); ctx.moveTo(X(5), Y(0)); ctx.lineTo(X(3), Y(2));
+    ctx.moveTo(X(3), Y(7)); ctx.lineTo(X(5), Y(9)); ctx.moveTo(X(5), Y(7)); ctx.lineTo(X(3), Y(9));
+    ctx.stroke();
+    // position markers
+    const mark = (r, c) => {
+      const d = cell * 0.08; const l = cell * 0.16;
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => {
+        if ((c === 0 && sx < 0) || (c === 8 && sx > 0)) return;
+        ctx.beginPath();
+        ctx.moveTo(X(c) + sx * d, Y(r) + sy * (d + l)); ctx.lineTo(X(c) + sx * d, Y(r) + sy * d); ctx.lineTo(X(c) + sx * (d + l), Y(r) + sy * d);
+        ctx.stroke();
+      });
+    };
+    [[2, 1], [2, 7], [7, 1], [7, 7]].forEach(([r, c]) => mark(r, c));
+    [0, 2, 4, 6, 8].forEach((c) => { mark(3, c); mark(6, c); });
+    // river
+    ctx.fillStyle = '#6b4a24';
+    ctx.font = `${cell * 0.5}px "KaiTi", "STKaiti", "BiauKai", "Noto Serif TC", serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const ry = (Y(4) + Y(5)) / 2;
+    ctx.fillText('楚　河', X(2), ry); ctx.fillText('漢　界', X(6), ry);
+    // file numbers
+    ctx.font = `${cell * 0.24}px sans-serif`; ctx.fillStyle = '#7a5a34';
+    const NB = ['１', '２', '３', '４', '５', '６', '７', '８', '９']; const NRd = ['九', '八', '七', '六', '五', '四', '三', '二', '一'];
+    for (let c = 0; c < 9; c += 1) {
+      ctx.fillText(NB[c], X(c), oy * 0.24);
+      ctx.fillText(NRd[c], X(c), Y(9) + oy * 0.78);
+    }
+  }
+
+  function drawPiece(p, x, y, opt = {}) {
+    const rad = cell * 0.44;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = opt.lift ? 14 : 5; ctx.shadowOffsetY = opt.lift ? 5 : 2;
+    const g = ctx.createRadialGradient(x - rad * 0.3, y - rad * 0.3, rad * 0.1, x, y, rad);
+    g.addColorStop(0, '#fff8e8'); g.addColorStop(1, '#ead2a2');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    const col = p > 0 ? '#b8322a' : '#1f1f1f';
+    ctx.strokeStyle = col; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, rad * 0.84, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = col;
+    ctx.font = `bold ${cell * 0.5}px "KaiTi", "STKaiti", "BiauKai", "Noto Serif TC", "PingFang TC", serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(E.pieceName(p), x, y + cell * 0.02);
+    if (opt.selected) {
+      ctx.strokeStyle = '#2f7dd1'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(x, y, rad + 3, 0, Math.PI * 2); ctx.stroke();
+    }
+    if (opt.danger) {
+      ctx.save(); ctx.setLineDash([5, 4]); ctx.strokeStyle = '#e0571f'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(x, y, rad + 4, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    }
+    if (opt.focus) {
+      ctx.strokeStyle = 'rgba(40,140,80,.9)'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(x, y, rad + 5, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  function corners(sq, color) {
+    const x = X(sq % 9); const y = Y((sq / 9) | 0); const d = cell * 0.47; const l = cell * 0.14;
+    ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => {
+      ctx.beginPath(); ctx.moveTo(x + sx * d, y + sy * (d - l)); ctx.lineTo(x + sx * d, y + sy * d); ctx.lineTo(x + sx * (d - l), y + sy * d); ctx.stroke();
+    });
+  }
+
+  function arrow(m, color) {
+    const f = (m / 90) | 0; const t = m % 90;
+    const x1 = X(f % 9); const y1 = Y((f / 9) | 0); const x2 = X(t % 9); const y2 = Y((t / 9) | 0);
+    const ang = Math.atan2(y2 - y1, x2 - x1); const len = Math.hypot(x2 - x1, y2 - y1);
+    ctx.save(); ctx.translate(x1, y1); ctx.rotate(ang);
+    ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineWidth = cell * 0.12; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cell * 0.2, 0); ctx.lineTo(len - cell * 0.32, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(len - cell * 0.12, 0); ctx.lineTo(len - cell * 0.42, -cell * 0.2); ctx.lineTo(len - cell * 0.42, cell * 0.2); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  function draw() {
+    if (!G.S) return;
+    drawGrid();
+    const b = G.S.b;
+    if (G.lastMove) { corners((G.lastMove / 90) | 0, 'rgba(47,125,209,.8)'); corners(G.lastMove % 90, 'rgba(47,125,209,.8)'); }
+    const show = opts().threat;
+    for (let sq = 0; sq < 90; sq += 1) {
+      const p = b[sq];
+      if (!p) continue;
+      if (anim && sq === anim.f) continue;
+      drawPiece(p, X(sq % 9), Y((sq / 9) | 0), {
+        selected: sq === G.selected, danger: show && G.marks.includes(sq), focus: sq === G.focus,
+      });
+    }
+    // legal targets
+    G.targets.forEach((t) => {
+      const x = X(t % 9); const y = Y((t / 9) | 0);
+      ctx.fillStyle = b[t] ? 'rgba(220,60,40,.35)' : 'rgba(47,125,209,.55)';
+      ctx.beginPath(); ctx.arc(x, y, b[t] ? cell * 0.46 : cell * 0.12, 0, Math.PI * 2); ctx.fill();
+    });
+    if (G.arrow) arrow(G.arrow.m, G.arrow.color);
+    if (anim) {
+      const k = Math.min(1, (performance.now() - anim.t0) / anim.dur); const e = 1 - (1 - k) * (1 - k);
+      const x = X(anim.f % 9) + (X(anim.t % 9) - X(anim.f % 9)) * e;
+      const y = Y((anim.f / 9) | 0) + (Y((anim.t / 9) | 0) - Y((anim.f / 9) | 0)) * e;
+      drawPiece(anim.p, x, y, { lift: true });
+    }
+  }
+
+  function animateAndApply(m) {
+    return new Promise((resolve) => {
+      const f = (m / 90) | 0; const t = m % 90;
+      anim = { f, t, p: G.S.b[f], t0: performance.now(), dur: 220 };
+      G.arrow = null; G.focus = -1; G.targets = []; G.selected = -1;
+      const step = () => {
+        draw();
+        if (performance.now() - anim.t0 < anim.dur) { requestAnimationFrame(step); return; }
+        anim = null; resolve(applyMove(m)); draw();
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
+  function applyMove(m) {
+    const before = cloneBoard();
+    const nota = E.notation(before, m);
+    const mover = G.S.side;
+    const cap = E.make(G.S, m);
+    G.moves.push({ m, nota, side: mover, cap });
+    G.h1s.push(G.S.h1); G.keys.push(`${G.S.h1}:${G.S.h2}`);
+    G.lastMove = m; G.hintData = null; G.hintStage = 0; G.marks = [];
+    checkOver();
+    updateMoves();
+    return { before, nota, cap, mover };
+  }
+
+  function checkOver() {
+    const lm = E.legalMoves(G.S);
+    if (!lm.length) {
+      const checked = E.inCheck(G.S, G.S.side);
+      G.over = G.S.side === 1 ? 'lose' : 'win';
+      G.overReason = checked ? '將死' : '困斃（無子可動）';
+      return;
+    }
+    const k = G.keys[G.keys.length - 1];
+    if (G.keys.filter((x) => x === k).length >= 3) { G.over = 'draw'; G.overReason = '同一局面重複三次'; }
+  }
+
+  function announceOver() {
+    if (G.over === 'win') { addMsg('good', `🎉 恭喜你贏了！（${G.overReason}）按「悔棋」可以回顧，或按「新局」再來一盤。`); setStatus('你贏了！'); }
+    else if (G.over === 'lose') { addMsg('bad', `這盤輸了（${G.overReason}）。別灰心——按「悔棋」退回幾步，我可以陪你找出更好的下法。`); setStatus('對局結束'); }
+    else { addMsg('coach', `和棋（${G.overReason}）。`); setStatus('和棋'); }
+  }
+
+  function rebuild(n) {
+    const keep = G.moves.slice(0, n);
+    G.S = E.newState(E.START, 1); G.moves = []; G.h1s = [G.S.h1]; G.keys = [`${G.S.h1}:${G.S.h2}`];
+    G.over = null; G.lastMove = 0;
+    keep.forEach((mv) => {
+      const cap = E.make(G.S, mv.m);
+      G.moves.push({ ...mv, cap }); G.h1s.push(G.S.h1); G.keys.push(`${G.S.h1}:${G.S.h2}`); G.lastMove = mv.m;
+    });
+    G.selected = -1; G.targets = []; G.arrow = null; G.marks = []; G.focus = -1; G.hintData = null; G.hintStage = 0; G.awaiting = false;
+    updateMoves(); draw();
+  }
+
+  function undo() {
+    if (G.busy) return;
+    if (!G.moves.length) return;
+    G.gen += 1; // cancel any pending continuation
+    let n = G.moves.length - 1;
+    while (n > 0 && G.moves[n].side !== 1) n -= 1; // back to before the last red move
+    if (G.moves[n] && G.moves[n].side !== 1) return;
+    rebuild(n);
+    addMsg('system', '↩️ 已悔棋，回到你走棋之前。再想一想，換一步試試看！');
+    setStatus('輪到你了（紅方）');
+  }
+
+  // ---------- turn flow ----------
+  async function userMove(m) {
+    const myGen = G.gen;
+    G.busy = true;
+    const bBefore = cloneBoard(); const hist = histBefore();
+    const r = await animateAndApply(m);
+    addMsg('user', `你走 <b>${r.nota}</b>${r.cap ? `，吃掉對方的${E.pieceName(r.cap)}` : ''}。`);
+    if (G.over) { G.busy = false; announceOver(); return; }
+    if (opts().coach) {
+      setStatus('教練正在看你這步…', true);
+      const a = await ask('analyze', { b: bBefore, side: 1, move: m, hist, timeMs: 700 });
+      if (myGen !== G.gen) return;
+      const fb = buildFeedback(bBefore, m, a);
+      G.lastAnalysis = { ...a, bBefore, m, nota: r.nota, fb };
+      if (fb.sev >= 2 && opts().pause) {
+        G.busy = false; G.awaiting = true;
+        if (a.reply) { G.arrow = { m: a.reply, color: 'rgba(200,60,40,.8)' }; draw(); }
+        addMsg(fb.type, `${fb.html}<br><span style="color:var(--muted)">（紅色箭頭是對方可能的回應）要不要悔棋重新想一步？</span>`, [
+          ['悔棋重下', () => { G.awaiting = false; undo(); }, 'primary'],
+          ['照走，繼續', () => { if (myGen === G.gen) { G.awaiting = false; G.arrow = null; aiTurn(); } }],
+        ]);
+        setStatus('要悔棋重下，還是照走？');
+        return;
+      }
+      addMsg(fb.type, fb.html);
+    }
+    await aiTurn();
+  }
+
+  function buildFeedback(bBefore, m, a) {
+    const bAfter = E.applyArr(bBefore, m);
+    let loss = a.best === m ? 0 : Math.max(0, a.bestScore - a.userScore);
+    const userMated = a.userScore < -MATE + 300; const bestMated = a.bestScore < -MATE + 300;
+    let sev = loss <= 40 ? 0 : loss <= 120 ? 1 : loss <= 300 ? 2 : 3;
+    if (userMated && !bestMated) sev = 3;
+    if (bestMated) { sev = 0; loss = 0; }
+    const best = mvSpan(bBefore, a.best);
+    const bestWhy = a.best ? moveReason(bBefore, a.best, 1) : '';
+    let reply = '';
+    if (a.reply) {
+      const q = bAfter[a.reply % 90];
+      const S2 = E.newState(E.applyArr(bAfter, a.reply), 1);
+      const chk = E.inCheck(S2, 1);
+      reply = `你走完之後，對方可以走 <b>${E.notation(bAfter, a.reply)}</b>${q ? `，吃掉你的${E.pieceName(q)}` : ''}${chk ? '，而且是將軍' : ''}`;
+      if (userMated) reply += '，形成殺棋';
+      reply += '。';
+    }
+    let html; let type;
+    if (bestMated) {
+      type = 'warn';
+      html = '局面已經很危險了，對方有殺棋。盡量拖延、找機會，下一盤我們早點注意帥的安全。';
+    } else if (sev === 0) {
+      type = 'good';
+      html = `👍 好棋！${a.best === m ? '這正是教練也會選的著法' : '這步和最佳著法差不多好'}——${moveReason(bBefore, m, 1)}。`;
+    } else if (sev === 1) {
+      type = 'coach';
+      html = `🙂 這步還可以，但有更好的選擇：${best}，${bestWhy}。`;
+    } else {
+      type = sev === 2 ? 'warn' : 'bad';
+      html = `${sev === 2 ? '⚠️ 這步不太好' : '❌ 這是失誤'}（${userMated ? '可能被將死' : lossText(loss)}）。${reply}<br>比較好的下法是 ${best}：${bestWhy}。<br>💭 ${lesson(bBefore, m, a)}`;
+    }
+    if (!bestMated) html += `<br><span style="color:var(--muted);font-size:13px">局勢：${scoreText(a.userScore)}</span>`;
+    return { sev, html, type, loss };
+  }
+
+  function lesson(bBefore, m, a) {
+    const t = m % 90; const bAfter = E.applyArr(bBefore, m);
+    if (a.userScore < -MATE + 300) return '走之前先檢查帥的安全：對方的車、馬、炮能不能直接攻擊到你的九宮？有沒有一步殺？';
+    if (a.reply) {
+      const rt = a.reply % 90; const q = bAfter[rt];
+      if (q && rt === t) return '想一想：走到這個位置之前，先問自己「對方有沒有子能吃到這裡？我有沒有保護？」';
+      if (q) return `這步讓你的${E.pieceName(q)}陷入危險（可能是原本就被攻擊卻沒注意，或者這步讓它失去了保護）。每一步之前，先掃一遍：自己哪些子正被攻擊？`;
+      const S2 = E.newState(E.applyArr(bAfter, a.reply), 1);
+      if (E.inCheck(S2, 1)) return '注意將帥的安全：對方可以藉將軍取得先手，走棋前先看看對方有哪些將軍的手段。';
+    }
+    return '試著站在對方的角度想：「如果我是對方，下一步最想走什麼？」這樣就比較不會漏看對方的手段。';
+  }
+
+  async function aiTurn() {
+    const myGen = G.gen;
+    G.busy = true; setStatus('電腦思考中…', true);
+    const lv = LEVELS[$('#selLevel').value] || LEVELS.medium;
+    const res = await ask('search', { b: cloneBoard(), side: -1, opts: { ...lv, hist: histBefore() } });
+    if (myGen !== G.gen) return;
+    if (!res || !res.move) { G.busy = false; checkOver(); announceOver(); return; }
+    const bBefore = cloneBoard();
+    const r = await animateAndApply(res.move);
+    G.lastAi = { m: res.move, bBefore };
+    addMsg('ai', describeAiMove(bBefore, res.move, r));
+    if (G.over) { G.busy = false; announceOver(); return; }
+    if (opts().coach) await coachBeforeTurn(myGen);
+    if (myGen !== G.gen) return;
+    G.busy = false; setStatus('輪到你了（紅方）'); draw();
+  }
+
+  function describeAiMove(bBefore, m, r) {
+    const t = m % 90; const after = cloneBoard();
+    let s = `電腦走 <b>${r.nota}</b>`;
+    if (r.cap) s += `，吃掉你的<b>${E.pieceName(r.cap)}</b>`;
+    if (E.inCheck(G.S, 1)) s += '，<b style="color:var(--bad)">將軍！</b>';
+    const attacked = [];
+    for (let sq = 0; sq < 90; sq += 1) {
+      if (after[sq] > 0 && after[sq] !== K && E.attackersOf(after, sq, -1).includes(t)) attacked.push(sq);
+    }
+    if (attacked.length) s += `。它現在攻擊你的${names(after, attacked)}`;
+    return `${s}。`;
+  }
+
+  async function threatInfo() {
+    const b = cloneBoard();
+    if (E.inCheck(G.S, 1)) return { inCheck: true };
+    const t = await ask('threat', { b, side: 1, timeMs: 450 });
+    if (!t || !t.move) return null;
+    const gain = t.score - t.base;
+    if (t.score > MATE - 300 || gain > 150) {
+      const q = b[t.move % 90];
+      const after = E.applyArr(b, t.move); const S2 = E.newState(after, 1);
+      let desc = '';
+      if (t.score > MATE - 300) desc = '直接形成殺棋';
+      else if (q) desc = `吃掉你的${E.pieceName(q)}`;
+      else if (E.inCheck(S2, 1)) desc = '將軍並取得優勢';
+      else desc = '取得明顯優勢';
+      return { move: t.move, desc, nota: E.notation(b, t.move), mate: t.score > MATE - 300, target: q ? t.move % 90 : -1 };
+    }
+    return null;
+  }
+
+  async function coachBeforeTurn(myGen) {
+    setStatus('教練正在看局面…', true);
+    const b = cloneBoard();
+    const hang = E.hanging(b, 1);
+    const th = await threatInfo();
+    if (myGen !== G.gen) return;
+    G.threat = th;
+    G.marks = hang.map((h) => h.sq);
+    if (th && th.target >= 0 && !G.marks.includes(th.target)) G.marks.push(th.target);
+    const lines = [];
+    if (th && th.inCheck) lines.push('⚠️ 你被將軍了！應將有三種方法：<b>吃掉</b>將軍的子、<b>擋住</b>它的路線、或<b>移動帥</b>躲開。');
+    hang.slice(0, 3).forEach((h) => {
+      const atkN = names(b, h.atk);
+      lines.push(`你的<b>${E.pieceName(b[h.sq])}</b>（${sqName(h.sq)}）正被對方的${atkN}攻擊，${h.def.length ? '雖然有保護，但被較便宜的子攻擊，換掉會吃虧' : '而且<b>沒有保護</b>'}。`);
+    });
+    if (th && !th.inCheck) lines.push(`對方的威脅：如果你不理會，對方下一步可能走 <b>${th.nota}</b>，${th.desc}。`);
+    if (lines.length) {
+      addMsg('warn', `🔎 走棋前先注意：<ul>${lines.map((l) => `<li>${l}</li>`).join('')}</ul>${opts().threat ? '<span style="color:var(--muted);font-size:13px">（棋盤上橘色虛線圈是有危險的棋子）</span>' : ''}`);
+    } else {
+      const eh = E.hanging(b, -1);
+      if (eh.length && Math.random() < 0.6) addMsg('coach', `💡 想一想：對方的${names(b, eh.map((h) => h.sq))}好像防守不夠，有沒有機會吃到？吃之前記得確認不會中計。`);
+    }
+  }
+
+  // ---------- hint / thinking / eval ----------
+  async function getHintData() {
+    if (G.hintData) return G.hintData;
+    const myGen = G.gen;
+    G.busy = true; setStatus('教練思考中…', true);
+    const r = await ask('search', { b: cloneBoard(), side: 1, opts: { timeMs: 1500, maxDepth: 16, hist: histBefore() } });
+    G.busy = false; setStatus('輪到你了（紅方）');
+    if (myGen !== G.gen) return null;
+    G.hintData = r;
+    return r;
+  }
+
+  const canAct = () => !G.busy && !G.over && !G.awaiting && G.S.side === 1;
+
+  async function hint(full) {
+    if (!canAct()) return;
+    const r = await getHintData();
+    if (!r || !r.move) return;
+    const b = cloneBoard(); const f = (r.move / 90) | 0; const p = b[f];
+    if (!full && G.hintStage === 0) {
+      G.hintStage = 1; G.focus = f; draw();
+      const why = moveReason(b, r.move, 1);
+      let q;
+      if (b[r.move % 90]) q = '這附近有吃子的機會，看看它能吃到什麼？';
+      else if (why.includes('將軍')) q = '能不能用它將軍，逼對方應對？';
+      else if (why.includes('威脅') || why.includes('保護')) q = '先處理危險：哪個子正被攻擊？要躲開還是保護？';
+      else q = '它現在的位置好嗎？能不能走到更有用的地方？';
+      addMsg('coach', `💡 提示一：注意你的<b>${E.pieceName(p)}</b>（${sqName(f)}，綠圈標示）。${q}<br><span style="color:var(--muted)">再按一次「提示」可以看完整答案。</span>`);
+      return;
+    }
+    G.hintStage = 2; G.focus = -1; G.arrow = { m: r.move, color: 'rgba(40,140,80,.85)' }; draw();
+    const pv = r.pv && r.pv.length > 1 ? `<br>後續可能的變化：${pvText(b, r.pv, 5)}` : '';
+    addMsg('coach', `💡 建議走 ${mvSpan(b, r.move)}（綠色箭頭）：${moveReason(b, r.move, 1)}。${pv}<br><span style="color:var(--muted);font-size:13px">局勢：${scoreText(r.score)}</span>`);
+  }
+
+  async function thinkingGuide() {
+    if (G.over) { addMsg('coach', '這盤已經結束了，按「新局」重新開始吧！'); return; }
+    if (G.S.side !== 1 || G.busy) { addMsg('coach', '等電腦走完，我再帶你一起想。'); return; }
+    const b = cloneBoard();
+    const steps = [];
+    // 1. opponent's last move
+    if (G.lastAi) {
+      const t = G.lastAi.m % 90; const attacked = [];
+      for (let sq = 0; sq < 90; sq += 1) if (b[sq] > 0 && b[sq] !== K && E.attackersOf(b, sq, -1).includes(t)) attacked.push(sq);
+      steps.push(`<b>對方剛剛想做什麼？</b> 對方走了 ${E.notation(G.lastAi.bBefore, G.lastAi.m)}。${attacked.length ? `這個子現在攻擊你的${names(b, attacked)}。` : '它沒有直接攻擊你的子，可能是在佈局或準備下一步。'}`);
+    } else steps.push('<b>開局第一步：</b>先想好要用什麼陣型。常見的是「當頭炮」（炮二平五）或先跳馬（馬二進三）。');
+    // 2. safety
+    const chk = E.inCheck(G.S, 1);
+    const hang = E.hanging(b, 1);
+    const th = await threatInfo();
+    let safe;
+    if (chk) safe = '你正被將軍，這一步<b>一定要先應將</b>。';
+    else if (hang.length) safe = `你的${names(b, hang.map((h) => h.sq))}有危險，要先考慮怎麼救（躲開、保護、或反擊更大的目標）。`;
+    else if (th && th.move) safe = `目前沒有子直接掉，但要小心對方的 ${th.nota}（${th.desc}）。`;
+    else safe = '目前沒有明顯的危險，很好！';
+    steps.push(`<b>我安全嗎？</b> ${safe}`);
+    // 3. opportunities
+    const S = E.newState(b, 1); const lm = E.legalMoves(S);
+    const caps = lm.filter((m) => b[m % 90] < 0);
+    const checks = lm.filter((m) => { const S2 = E.newState(E.applyArr(b, m), -1); return E.inCheck(S2, -1); });
+    const eh = E.hanging(b, -1);
+    let opp = [];
+    if (eh.length) opp.push(`對方的${names(b, eh.map((h) => h.sq))}防守薄弱，可以考慮攻擊或吃掉`);
+    if (caps.length && !eh.length) opp.push(`你有 ${caps.length} 種吃子的走法，但要確認吃了之後不會被反吃更大的子`);
+    if (checks.length) opp.push(`你有 ${checks.length} 種將軍的走法，將軍能逼對方應對，但不是每個將軍都有用`);
+    if (!opp.length) opp = ['暫時沒有直接的戰術機會'];
+    steps.push(`<b>我有什麼機會？</b> ${opp.join('；')}。`);
+    // 4. plan
+    const undeveloped = [];
+    if (b[81] === R || b[89] === R) undeveloped.push('車');
+    if (b[82] === N || b[88] === N) undeveloped.push('馬');
+    let plan;
+    if (undeveloped.length && G.moves.length < 30) plan = `你還有${[...new Set(undeveloped)].join('、')}沒出動。沒有急事時，優先出動大子（「三步不出車，棋必輸」）。`;
+    else plan = '子力大致都出來了，想想看要集中攻擊對方哪一側？哪裡的防守比較弱？';
+    steps.push(`<b>長遠計畫：</b> ${plan}`);
+    steps.push('<b>最後檢查：</b> 選好一步之後，先別急著走——想像對方的回應，確認那步不會讓你掉子或被將死。');
+    addMsg('coach', `🧠 我們一起想這一步：<ol>${steps.map((s) => `<li>${s}</li>`).join('')}</ol>還是想不到的話，按「提示」我給你方向。`);
+  }
+
+  function material(b, s) {
+    const cnt = {};
+    b.forEach((p) => { if (p * s > 0 && Math.abs(p) !== K) { const n = E.pieceName(p); cnt[n] = (cnt[n] || 0) + 1; } });
+    return Object.entries(cnt).map(([n, c]) => `${n}${c}`).join(' ');
+  }
+
+  async function evalPosition() {
+    if (G.busy) return;
+    const myGen = G.gen;
+    G.busy = true; setStatus('評估局勢中…', true);
+    const side = G.S.side;
+    const r = await ask('search', { b: cloneBoard(), side, opts: { timeMs: 1200, maxDepth: 16, hist: histBefore() } });
+    G.busy = false; setStatus(G.over ? '對局結束' : G.S.side === 1 ? '輪到你了（紅方）' : '電腦思考中…');
+    if (myGen !== G.gen) return;
+    const v = side === 1 ? r.score : -r.score;
+    const b = cloneBoard();
+    addMsg('coach', `📊 局勢：${scoreText(v)}<br>你的子力：${material(b, 1)}<br>對方子力：${material(b, -1)}<br><span style="color:var(--muted);font-size:13px">（子力大約價值：車 9、炮 4.5、馬 4、仕/相 2、兵 1，過河兵約 2）</span>`);
+    return v;
+  }
+
+  // ---------- Q&A ----------
+  const RULES = {
+    K: '<b>帥／將</b>：只能在九宮內活動，每次直走或橫走一格。兩個將帥不能在同一直線上「照面」（中間沒有其他子），這叫「王不見王」或「飛將」。',
+    A: '<b>仕／士</b>：只能在九宮內，每次斜走一格。主要任務是保護將帥。',
+    B: '<b>相／象</b>：走「田」字（斜走兩格），不能過河。如果田字中心有子擋住，叫「塞象眼」，就不能走。',
+    N: '<b>傌／馬</b>：走「日」字（直一格再斜一格）。如果直走的那一格有子擋住，叫「蹩馬腿」，就不能往那個方向跳。',
+    R: '<b>俥／車</b>：直線、橫線任意走，不能越過其他子，是威力最大的子。',
+    C: '<b>炮／砲</b>：不吃子時跟車一樣直走；<b>吃子時必須隔一個子（叫「炮架」）跳過去吃</b>。所以炮前面要有子當炮架才有攻擊力。',
+    P: '<b>兵／卒</b>：沒過河前只能往前走一格；過河後可以往前或左右走一格，永遠不能後退。',
+  };
+  const PIECE_CHARS = { 帥: 'K', 將: 'K', 仕: 'A', 士: 'A', 相: 'B', 象: 'B', 傌: 'N', 馬: 'N', 俥: 'R', 車: 'R', 炮: 'C', 砲: 'C', 兵: 'P', 卒: 'P' };
+  const TERMS = {
+    蹩馬腿: RULES.N, 塞象眼: RULES.B, 炮架: RULES.C, 飛將: RULES.K, 王不見王: RULES.K,
+    將軍: '<b>將軍</b>：攻擊對方的將帥。被將軍的一方必須馬上化解（吃掉、擋住、或躲開）。',
+    將死: '<b>將死</b>：被將軍而且無論怎麼走都無法化解，就輸了。',
+    困斃: '<b>困斃</b>：輪到你走卻沒有任何合法的步可走，在象棋裡也算輸。',
+    抽將: '<b>抽將</b>：用一個子將軍的同時，讓另一個子攻擊對方的子（或用移開的子將軍），對方應將後就能吃掉那個子。',
+    當頭炮: '<b>當頭炮</b>：開局把炮移到中路（炮二平五），直接瞄準對方中卒和將。是最常見的進攻開局。',
+    屏風馬: '<b>屏風馬</b>：兩匹馬都跳到河口附近（馬二進三、馬八進七），像屏風一樣保護中路，是對付當頭炮的經典防守。',
+    臥槽馬: '<b>臥槽馬</b>：馬跳到對方九宮旁邊的「臥槽」位置（如紅馬到黑方的三·七路第二排），配合其他子容易形成殺棋。',
+    悶宮: '<b>悶宮</b>：對方的將被自己的士擋住退路，再用炮將軍就無法躲開。',
+    長將: '<b>長將</b>：一直不停地將軍。正式比賽中單方面長將是不允許的；在這裡，同一局面重複三次會判和棋。',
+    棄子: '<b>棄子</b>：故意讓對方吃掉一個子，換取更大的利益（例如攻勢或殺棋）。',
+  };
+  const OPENING = `<b>開局要注意：</b><ol>
+    <li><b>先出大子</b>：車、馬、炮要盡快出動。俗話說「三步不出車，棋必輸」。</li>
+    <li><b>不要一個子連走好幾步</b>，讓每個子都有機會出來。</li>
+    <li><b>不要太早亂動帥、仕、相</b>，它們是防守的基礎。</li>
+    <li><b>中路很重要</b>：中兵和中路的炮、馬往往是攻守的焦點。</li>
+    <li>常見開局：當頭炮（炮二平五）＋跳馬（馬二進三）＋出車（車一平二）。</li></ol>`;
+  const ENDGAME = `<b>殘局要點：</b><ol>
+    <li>子少的時候，<b>帥也可以參與</b>，配合「王不見王」可以控制對方的將。</li>
+    <li>過河兵很有價值，越靠近對方九宮越強，但到底線就只能橫走了。</li>
+    <li>車是殘局的主力；單車通常能贏對方的仕相不全。</li>
+    <li>炮需要炮架，殘局子少時威力會下降；馬在子少時反而比較靈活。</li></ol>`;
+
+  let llmReady = null;
+  const API_BASE = location.protocol.startsWith('http') ? location.pathname.replace(/\/(index\.html)?$/, '') : null;
+  async function checkLLM() {
+    if (llmReady !== null) return llmReady;
+    if (!API_BASE) { llmReady = false; return false; }
+    try {
+      const r = await fetch(`${API_BASE}/api/status`);
+      const j = await r.json(); llmReady = !!j.llm;
+    } catch (e) { llmReady = false; }
+    return llmReady;
+  }
+
+  function boardText(b) {
+    const NB = '１２３４５６７８９'; const NRd = '九八七六五四三二一';
+    let s = `　${NB.split('').join('')}（黑方／電腦）\n`;
+    for (let r = 0; r < 10; r += 1) {
+      let line = '　';
+      for (let c = 0; c < 9; c += 1) { const p = b[r * 9 + c]; line += p ? E.pieceName(p) : '＋'; }
+      s += `${line}\n`;
+      if (r === 4) s += '　～～～～楚河漢界～～～～\n';
+    }
+    s += `　${NRd.split('').join('')}（紅方／學生）`;
+    return s;
+  }
+
+  async function engineContext() {
+    const b = cloneBoard(); const lines = [];
+    lines.push(`輪到：${sideName(G.S.side)}`);
+    if (G.S.side === 1 && !G.over) {
+      const r = await getHintData();
+      if (r && r.move) {
+        lines.push(`引擎建議紅方走：${E.notation(b, r.move)}（${moveReason(b, r.move, 1)}）`);
+        if (r.pv && r.pv.length > 1) lines.push(`主要變化：${pvText(b, r.pv, 5)}`);
+        lines.push(`局勢評估：${scoreText(r.score)}`);
+      }
+      const hang = E.hanging(b, 1);
+      if (hang.length) lines.push(`紅方有危險的子：${hang.map((h) => `${E.pieceName(b[h.sq])}（被${names(b, h.atk)}攻擊）`).join('、')}`);
+      const th = await threatInfo();
+      if (th && th.inCheck) lines.push('紅方正被將軍');
+      else if (th) lines.push(`黑方威脅：${th.nota}（${th.desc}）`);
+    }
+    if (G.lastAnalysis && G.lastAnalysis.fb) {
+      const la = G.lastAnalysis;
+      lines.push(`學生上一步：${la.nota}，引擎認為最佳是 ${E.notation(la.bBefore, la.best)}，損失約 ${(la.fb.loss / 100).toFixed(1)} 兵。${la.reply ? `對方最佳回應：${E.notation(E.applyArr(la.bBefore, la.m), la.reply)}` : ''}`);
+    }
+    return lines.join('\n');
+  }
+
+  function explainLast() {
+    const la = G.lastAnalysis;
+    if (!la) { addMsg('coach', '你還沒走棋（或沒有開啟「每步點評」），走一步之後我就可以告訴你那步好不好。'); return; }
+    if (la.fb.sev === 0) { addMsg('good', `你上一步 <b>${la.nota}</b> 其實是好棋！${moveReason(la.bBefore, la.m, 1)}。`); return; }
+    const bAfter = E.applyArr(la.bBefore, la.m);
+    const reply = la.replyPv && la.replyPv.length ? `對方最強的回應是 ${pvText(bAfter, la.replyPv, 4)}。` : '';
+    addMsg(la.fb.type === 'coach' ? 'coach' : la.fb.type, `關於你上一步 <b>${la.nota}</b>：${la.fb.loss ? `${lossText(la.fb.loss)}。` : ''}${reply}<br>更好的是 <b>${E.notation(la.bBefore, la.best)}</b>：${moveReason(la.bBefore, la.best, 1)}${la.bestPv && la.bestPv.length > 1 ? `（變化：${pvText(la.bBefore, la.bestPv, 4)}）` : ''}。<br>💭 ${lesson(la.bBefore, la.m, la)}`);
+  }
+
+  async function explainThreat() {
+    if (G.S.side !== 1 || G.busy) { addMsg('coach', '等電腦走完，我再幫你看對方的意圖。'); return; }
+    const b = cloneBoard(); const th = await threatInfo(); const hang = E.hanging(b, 1);
+    const parts = [];
+    if (G.lastAi) parts.push(`對方上一步是 <b>${E.notation(G.lastAi.bBefore, G.lastAi.m)}</b>。`);
+    if (th && th.inCheck) parts.push('對方正在將軍你，必須先應將！');
+    else if (th) parts.push(`對方的主要威脅：如果你不理會，對方會走 <b>${th.nota}</b>，${th.desc}。`);
+    else parts.push('目前看不出對方有立即的威脅，可能是在佈局。你可以放心改善自己的子力，或主動進攻。');
+    if (hang.length) parts.push(`另外，你的${names(b, hang.map((h) => h.sq))}正處於危險中。`);
+    G.marks = hang.map((h) => h.sq); if (th && th.move) G.arrow = { m: th.move, color: 'rgba(200,60,40,.8)' };
+    draw();
+    addMsg('coach', `🔎 ${parts.join('')}${th && th.move ? '<br><span style="color:var(--muted);font-size:13px">（紅色箭頭是對方想走的棋）</span>' : ''}`);
+  }
+
+  async function onQuestion(qRaw) {
+    const q = qRaw.trim();
+    if (!q) return;
+    addMsg('me', esc(q));
+    // engine-backed commands answered locally for precision
+    const has = (re) => re.test(q);
+    const pieceKey = Object.keys(PIECE_CHARS).find((ch) => q.includes(ch));
+    if (has(/怎麼想|思路|思考|想法/)) { await thinkingGuide(); return; }
+    if (pieceKey && has(/怎麼走|走法|規則|怎麼動|怎麼吃|能不能|可以走/)) { addMsg('coach', RULES[PIECE_CHARS[pieceKey]]); return; }
+    const term = Object.keys(TERMS).find((t) => q.includes(t));
+    if (term && !has(/下一步|怎麼下/)) { addMsg('coach', TERMS[term]); return; }
+    if (has(/為什麼|剛剛|剛才|那步|上一步|錯在/)) { explainLast(); return; }
+    if (has(/提示|下一步|怎麼下|走哪|該走|建議|最好的|最佳/)) {
+      if (!canAct()) { addMsg('coach', G.over ? '這盤已結束。' : '等輪到你的時候再問我喔。'); return; }
+      await hint(true); return;
+    }
+    if (has(/威脅|對方想|意圖|危險|想幹嘛|要幹嘛|目的/)) { await explainThreat(); return; }
+    if (has(/局勢|形勢|優勢|誰贏|領先|落後|評估|分數/)) { await evalPosition(); return; }
+    if (has(/開局|佈局|布局/)) { addMsg('coach', OPENING); return; }
+    if (has(/殘局/)) { addMsg('coach', ENDGAME); return; }
+
+    // free-form question → LLM coach (if server configured), grounded by engine facts
+    if (await checkLLM()) {
+      const thinking = addMsg('coach', '思考中…');
+      try {
+        const ctxText = await engineContext();
+        const res = await fetch(`${API_BASE}/api/ask`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: q, board: boardText(cloneBoard()), moves: G.moves.map((m) => m.nota).join(' '), engine: ctxText, chat: G.chat.slice(-6),
+          }),
+        });
+        const j = await res.json();
+        if (!res.ok || !j.answer) throw new Error(j.error || 'no answer');
+        thinking.innerHTML = `<span class="who">教練</span>${esc(j.answer).replace(/\n/g, '<br>')}`;
+        G.chat.push({ role: 'user', content: q }, { role: 'assistant', content: j.answer });
+        return;
+      } catch (e) {
+        thinking.remove();
+      }
+    }
+    if (has(/規則|怎麼玩|輸贏/)) { addMsg('coach', `${Object.values(RULES).join('<br>')}<br>把對方的將「將死」或「困斃」就贏了。`); return; }
+    if (pieceKey) { addMsg('coach', RULES[PIECE_CHARS[pieceKey]]); return; }
+    addMsg('coach', `這個問題我目前只能簡單回答（伺服器未設定 AI 對話服務）。你可以這樣問我：<ul>
+      <li>「現在該怎麼下？」「給我提示」</li><li>「對方想幹嘛？」「有什麼危險？」</li><li>「為什麼剛剛那步不好？」</li>
+      <li>「局勢如何？」</li><li>「我該怎麼想？」</li><li>「馬怎麼走？」「什麼是蹩馬腿？」「什麼是當頭炮？」</li><li>「開局要注意什麼？」「殘局技巧」</li></ul>`);
+  }
+
+  // ---------- input ----------
+  cv.addEventListener('click', (e) => {
+    const rect = cv.getBoundingClientRect();
+    const x = e.clientX - rect.left; const y = e.clientY - rect.top;
+    const c = Math.round((x - ox) / cell); const r = Math.round((y - oy) / cell);
+    if (c < 0 || c > 8 || r < 0 || r > 9) return;
+    if (Math.hypot(x - X(c), y - Y(r)) > cell * 0.5) return;
+    const sq = r * 9 + c;
+    if (!canAct()) return;
+    const p = G.S.b[sq];
+    if (G.selected >= 0 && G.targets.includes(sq)) { userMove(G.selected * 90 + sq); return; }
+    if (p > 0) {
+      G.selected = sq;
+      G.targets = E.legalMoves(G.S).filter((m) => ((m / 90) | 0) === sq).map((m) => m % 90);
+      if (!G.targets.length && E.inCheck(G.S, 1)) setStatus('被將軍中，這個子不能解將');
+    } else { G.selected = -1; G.targets = []; }
+    draw();
+  });
+
+  $('#btnNew').onclick = () => { if (G.busy && !confirm('電腦還在思考，確定要開新局嗎？')) return; G.busy = false; resetGame(); };
+  $('#btnUndo').onclick = () => undo();
+  $('#btnHint').onclick = () => hint(false);
+  $('#btnThink').onclick = () => thinkingGuide();
+  $('#btnEval').onclick = () => evalPosition();
+  $('#optThreat').onchange = () => draw();
+  document.querySelectorAll('.chips button').forEach((bt) => { bt.onclick = () => onQuestion(bt.dataset.q); });
+  $('#askForm').onsubmit = (e) => { e.preventDefault(); const v = $('#askInput').value; $('#askInput').value = ''; onQuestion(v); };
+  window.addEventListener('resize', resize);
+
+  resetGame();
+  resize();
+  checkLLM();
+  window.__xq = { G, E }; // for debugging
+})();
+</script>
+</body>
+</html>

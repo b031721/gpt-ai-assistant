@@ -1,3 +1,8 @@
 {
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "xiangqi/**"
+    }
+  },
   "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
 }

@@ -18,6 +18,16 @@ GPT AI Assistant is an application that is implemented using the OpenAI API and 
 
 <img src="/demo/labot.png" width="300"/>
 
+## 象棋教練（Xiangqi Coach）
+
+A full-size Chinese chess (象棋) board where you (red) play against the computer (black), with a built-in coach.
+
+- Open `/xiangqi` on the deployed app (or open `xiangqi/index.html` directly in a browser).
+- After every move the coach rates it. If it was a mistake, the coach shows the opponent's punishing reply, a better move, and how to think about it, then pauses so you can take the move back (悔棋).
+- 「提示」 gives a hint in two steps: first the idea, then the move. 「我該怎麼想？」 walks through a thinking checklist for the current position.
+- Pieces that are in danger are circled. You can ask questions in the chat box (rules, terms, threats, "what should I play?").
+- Open-ended questions go to the OpenAI chat model through `POST /xiangqi/api/ask`, using `OPENAI_API_KEY`. The engine's analysis is passed along so the answer stays accurate. Without a key, the built-in coach answers instead.
+
 ## Documentations
 
 - <a href="https://memochou1993.github.io/gpt-ai-assistant-docs/" target="_blank">中文</a>
