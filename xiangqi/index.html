@@ -616,12 +616,20 @@ function ENGINE(isWorker) {
     worker = new Worker(url);
   } catch (e) { worker = null; }
   let reqId = 0; const pending = new Map();
-  if (worker) worker.onmessage = (e) => { const cb = pending.get(e.data.id); pending.delete(e.data.id); if (cb) cb(e.data.res); };
+  if (worker) {
+    worker.onmessage = (e) => { const job = pending.get(e.data.id); pending.delete(e.data.id); if (job) job[0](e.data.res); };
+    // if the worker cannot run (e.g. blocked by the host), fall back to the page thread
+    worker.onerror = () => {
+      worker = null;
+      const jobs = [...pending.values()]; pending.clear();
+      jobs.forEach(([cb, msg]) => setTimeout(() => cb(E.handle(msg)), 20));
+    };
+  }
   function ask(cmd, payload) {
     return new Promise((resolve) => {
       const msg = { cmd, ...payload };
       if (!worker) { setTimeout(() => resolve(E.handle(msg)), 20); return; }
-      reqId += 1; msg.id = reqId; pending.set(reqId, resolve); worker.postMessage(msg);
+      reqId += 1; msg.id = reqId; pending.set(reqId, [resolve, msg]); worker.postMessage(msg);
     });
   }
 
@@ -1394,7 +1402,7 @@ function ENGINE(isWorker) {
     draw();
   });
 
-  $('#btnNew').onclick = () => { if (G.busy && !confirm('電腦還在思考，確定要開新局嗎？')) return; G.busy = false; resetGame(); };
+  $('#btnNew').onclick = () => { G.busy = false; resetGame(); };
   $('#btnUndo').onclick = () => undo();
   $('#btnHint').onclick = () => hint(false);
   $('#btnThink').onclick = () => thinkingGuide();
@@ -1406,6 +1414,7 @@ function ENGINE(isWorker) {
 
   resetGame();
   resize();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => draw());
   checkLLM();
   window.__xq = { G, E }; // for debugging
 })();
