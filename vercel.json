@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/index.js": {
-      "includeFiles": "xiangqi/**"
+      "includeFiles": "{xiangqi,weiqi}/**"
     }
   },
   "rewrites": [{ "source": "/(.*)", "destination": "/api" }]

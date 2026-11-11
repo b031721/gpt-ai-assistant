@@ -28,6 +28,16 @@ A full-size Chinese chess (象棋) board where you (red) play against the comput
 - Pieces that are in danger are circled. You can ask questions in the chat box (rules, terms, threats, "what should I play?").
 - Open-ended questions go to the OpenAI chat model through `POST /xiangqi/api/ask`, using `OPENAI_API_KEY`. The engine's analysis is passed along so the answer stays accurate. Without a key, the built-in coach answers instead.
 
+## 圍棋教練（Go Coach）
+
+A Go board at `/weiqi` (or open `weiqi/index.html` directly) with large (19×19), medium (13×13) and small (9×9) sizes. You can play against the computer or with a friend.
+
+- Uses Chinese area scoring with 7.5 komi. After both players pass, the page enters scoring mode. Likely dead stones are marked automatically, and you can tap a group to change it.
+- The coach warns about groups with only one liberty (in atari), points out stones you can capture, and flags self-atari or an ignored atari.
+- 「提示」 gives a hint in two steps, and 「下一步」 plays the suggested move and explains it.
+- The game is saved in the browser and restored when you come back.
+- The computer opponent uses simple rules of thumb and plays at beginner level.
+
 ## Documentations
 
 - <a href="https://memochou1993.github.io/gpt-ai-assistant-docs/" target="_blank">中文</a>
