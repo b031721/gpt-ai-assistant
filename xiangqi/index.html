@@ -1198,9 +1198,9 @@ function ENGINE(isWorker) {
     restoring = false;
     addMsg('system', `↻ 已恢復上次的棋局（共 ${ok.length} 步）。`);
     if (G.over) announceOver();
-    else if (G.S.side === -1) { G.waitNext = true; setStatus('按「下一步」讓電腦走'); }
     $('#feed').scrollTop = $('#feed').scrollHeight;
     G.anchor = null;
+    if (!G.over && G.S.side === -1) aiTurn(); // resume: the computer moves on its own
     return true;
   }
 
@@ -1460,6 +1460,17 @@ function ENGINE(isWorker) {
       <li>「局勢如何？」</li><li>「我該怎麼想？」</li><li>「馬怎麼走？」「什麼是蹩馬腿？」「什麼是當頭炮？」</li><li>「開局要注意什麼？」「殘局技巧」</li></ul>`);
   }
 
+  function blockedNote() {
+    let t;
+    if (G.over) t = '這盤已經結束了，按「新局」重新開始，或按「悔棋」退回去。';
+    else if (G.awaiting) t = '剛才那步有問題，請先按訊息裡的「悔棋重下」或「照走，繼續」（或按「下一步」照走）。';
+    else if (G.waitNext) t = '現在輪到電腦，按「下一步」讓電腦走。';
+    else if (G.busy) t = '電腦正在思考，請稍等一下。';
+    else return;
+    const last = $('#feed').lastElementChild;
+    if (!last || !last.textContent.includes(t)) addMsg('system', t);
+  }
+
   // ---------- input ----------
   cv.addEventListener('click', (e) => {
     const rect = cv.getBoundingClientRect();
@@ -1468,7 +1479,7 @@ function ENGINE(isWorker) {
     if (c < 0 || c > 8 || r < 0 || r > 9) return;
     if (Math.hypot(x - X(c), y - Y(r)) > cell * 0.5) return;
     const sq = r * 9 + c;
-    if (!canAct()) return;
+    if (!canAct()) { blockedNote(); return; }
     const p = G.S.b[sq];
     if (G.selected >= 0 && G.targets.includes(sq)) { userMove(G.selected * 90 + sq); return; }
     if (p > 0) {

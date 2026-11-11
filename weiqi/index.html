@@ -725,7 +725,7 @@
     addMsg('coach', `↻ 已恢復上次的棋局（${G.size}路，共 ${G.moves.length} 手）。`);
     $('#feed').scrollTop = $('#feed').scrollHeight; G.anchor = null;
     if (!G.over && G.passes >= 2) enterScoring();
-    else if (!G.over && isAITurn()) { G.waitNext = true; updateStatus('按「下一步」讓電腦下'); }
+    else if (!G.over && isAITurn()) aiTurn(); // resume: the computer moves on its own
     return true;
   }
 
@@ -737,7 +737,15 @@
     if (Math.hypot(x - X(c), y - Y(r)) > cell * 0.55) return;
     const p = r * n + c;
     if (G.scoring) { toggleDead(p); return; }
-    if (!canAct()) return;
+    if (!canAct()) {
+      let t = '';
+      if (G.over) t = '這盤已經結束了，按「新局」重新開始，或按「悔棋」退回去。';
+      else if (G.awaiting) t = '剛才那手有問題，請先按訊息裡的「悔棋重下」或「照下，繼續」（或按「下一步」照下）。';
+      else if (G.waitNext || isAITurn()) t = G.busy ? '電腦正在思考，請稍等一下。' : '現在輪到電腦，按「下一步」讓電腦下。';
+      const last = $('#feed').lastElementChild;
+      if (t && (!last || !last.textContent.includes(t))) addMsg('coach', t);
+      return;
+    }
     if (G.b[p]) return;
     if (!tryPlay(G.b, p, G.toMove, G.ko)) {
       addMsg('coach', p === G.ko ? '這裡剛被提劫，<b>不能馬上提回來</b>，要先在別的地方下一手（找劫材）。' : '這裡不能下：下了之後自己沒有氣，又提不到對方的子（禁著點）。');
