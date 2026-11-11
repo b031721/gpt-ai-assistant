@@ -80,12 +80,13 @@
   #btnMore { display: none; }
   @media (max-width: 980px) {
     html, body { height: 100%; }
-    .app { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); height: 100%; gap: 8px; padding: 8px; }
+    .app { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; height: 100%; gap: 8px; padding: 8px; }
+    .panel { order: -1; }
     .panel { min-height: 0; }
     .head { padding: 6px 10px; }
     .title h1 { display: none; }
-    .bar { flex-wrap: nowrap; overflow-x: auto; margin-top: 2px; }
-    .bar button { flex: none; }
+    .bar { gap: 5px; margin-top: 2px; }
+    .bar button { padding: 5px 9px; }
     #btnMore { display: inline-block; }
     .more, .moves { display: none; }
     .panel.open .more, .panel.open .moves { display: block; }
@@ -102,6 +103,7 @@
       <div class="title"><h1>象棋教練</h1><span id="status">輪到你了（紅方）</span></div>
       <div class="row bar">
         <button id="btnHint" class="primary">提示</button>
+        <button id="btnNext" class="primary">下一步</button>
         <button id="btnUndo">悔棋</button>
         <button id="btnThink">怎麼想？</button>
         <button id="btnEval">局勢</button>
@@ -658,13 +660,13 @@ function ENGINE(isWorker) {
     G.over = null; G.busy = false; G.awaiting = false;
     G.selected = -1; G.targets = []; G.lastMove = 0; G.arrow = null;
     G.hintData = null; G.hintStage = 0; G.marks = []; G.focus = -1;
-    G.lastAnalysis = null; G.lastAi = null; G.threat = null; G.chat = [];
+    G.lastAnalysis = null; G.lastAi = null; G.threat = null; G.chat = []; G.waitNext = false; G.anchor = null;
     G.gen = (G.gen || 0) + 1;
     $('#feed').innerHTML = '';
     addMsg('coach', `歡迎！你執<b style="color:var(--red)">紅方</b>（下方），先走。點一下棋子再點目的地就能走棋。<br>
       我會在你每一步之後點評：好棋會稱讚你，走得不好會告訴你<b>為什麼</b>、<b>對方會怎麼回應</b>、以及<b>更好的想法</b>。
       不知道怎麼走時按「提示」（按一次給思路，再按一次給答案），或按「我該怎麼想？」讓我帶你一步步思考。也可以在下方直接問我問題。`);
-    updateMoves(); setStatus('輪到你了（紅方）'); draw();
+    updateMoves(); setStatus('輪到你了（紅方）'); draw(); save();
   }
 
   const cloneBoard = () => Array.from(G.S.b);
@@ -704,6 +706,7 @@ function ENGINE(isWorker) {
     if (type === 'user' || type === 'me') G.anchor = d;
     const anchor = G.anchor && G.anchor.isConnected ? G.anchor : d;
     feed.scrollTop = Math.min(feed.scrollHeight - feed.clientHeight, Math.max(0, anchor.offsetTop - 6));
+    save();
     return d;
   }
 
@@ -942,7 +945,7 @@ function ENGINE(isWorker) {
     G.h1s.push(G.S.h1); G.keys.push(`${G.S.h1}:${G.S.h2}`);
     G.lastMove = m; G.hintData = null; G.hintStage = 0; G.marks = [];
     checkOver();
-    updateMoves();
+    updateMoves(); save();
     return { before, nota, cap, mover };
   }
 
@@ -968,12 +971,14 @@ function ENGINE(isWorker) {
     const keep = G.moves.slice(0, n);
     G.S = E.newState(E.START, 1); G.moves = []; G.h1s = [G.S.h1]; G.keys = [`${G.S.h1}:${G.S.h2}`];
     G.over = null; G.lastMove = 0;
+    G.lastAi = null; G.waitNext = false;
     keep.forEach((mv) => {
+      if (mv.side === -1) G.lastAi = { m: mv.m, bBefore: Array.from(G.S.b) };
       const cap = E.make(G.S, mv.m);
       G.moves.push({ ...mv, cap }); G.h1s.push(G.S.h1); G.keys.push(`${G.S.h1}:${G.S.h2}`); G.lastMove = mv.m;
     });
     G.selected = -1; G.targets = []; G.arrow = null; G.marks = []; G.focus = -1; G.hintData = null; G.hintStage = 0; G.awaiting = false;
-    updateMoves(); draw();
+    updateMoves(); draw(); save();
   }
 
   function undo() {
@@ -1084,16 +1089,9 @@ function ENGINE(isWorker) {
   }
 
   function describeAiMove(bBefore, m, r) {
-    const t = m % 90; const after = cloneBoard();
     let s = `電腦走 <b>${r.nota}</b>`;
-    if (r.cap) s += `，吃掉你的<b>${E.pieceName(r.cap)}</b>`;
     if (E.inCheck(G.S, 1)) s += '，<b style="color:var(--bad)">將軍！</b>';
-    const attacked = [];
-    for (let sq = 0; sq < 90; sq += 1) {
-      if (after[sq] > 0 && after[sq] !== K && E.attackersOf(after, sq, -1).includes(t)) attacked.push(sq);
-    }
-    if (attacked.length) s += `。它現在攻擊你的${names(after, attacked)}`;
-    return `${s}。`;
+    return `${s}<br>它的用意：${moveReason(bBefore, m, -1)}。`;
   }
 
   async function threatInfo() {
@@ -1139,6 +1137,73 @@ function ENGINE(isWorker) {
     }
   }
 
+  // ---------- 下一步: play the coach's move for you, then the computer's ----------
+  async function nextStep() {
+    if (G.busy || G.over) return;
+    if (G.awaiting) { // paused after a mistake: same as 照走
+      G.awaiting = false; G.arrow = null;
+      document.querySelectorAll('.acts button').forEach((x) => { x.disabled = true; });
+      await aiTurn(); return;
+    }
+    if (G.S.side === -1) { G.waitNext = false; await aiTurn(); return; }
+    if (!canAct()) return;
+    const r = await getHintData();
+    if (!r || !r.move || G.S.side !== 1) return;
+    const b = cloneBoard();
+    const why = moveReason(b, r.move, 1);
+    const pv = r.pv && r.pv.length > 1 ? `<br>預想的後續：${pvText(b, r.pv, 5)}` : '';
+    G.busy = true;
+    const res = await animateAndApply(r.move);
+    G.busy = false;
+    addMsg('good', `▶ 照教練的建議走 <b>${res.nota}</b><br>為什麼：${why}。${pv}`);
+    if (G.over) { announceOver(); return; }
+    G.waitNext = true; G.anchor = null;
+    setStatus('按「下一步」看電腦怎麼走'); save();
+  }
+
+  // ---------- save / restore (this browser only) ----------
+  const STORE_KEY = 'xiangqi-coach-v1';
+  let restoring = false;
+  function save() {
+    if (restoring || !G.S) return;
+    try {
+      const feed = [...$('#feed').children].slice(-40).map((d) => d.outerHTML).join('');
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        moves: G.moves.map((x) => x.m), level: $('#selLevel').value, coach: $('#optCoach').checked, pause: $('#optPause').checked, threat: $('#optThreat').checked, feed,
+      }));
+    } catch (e) { /* storage unavailable */ }
+  }
+  function restore() {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) { d = null; }
+    if (!d || !Array.isArray(d.moves) || !d.moves.length) return false;
+    restoring = true;
+    resetGame();
+    if (d.level) $('#selLevel').value = d.level;
+    if (typeof d.coach === 'boolean') $('#optCoach').checked = d.coach;
+    if (typeof d.pause === 'boolean') $('#optPause').checked = d.pause;
+    if (typeof d.threat === 'boolean') $('#optThreat').checked = d.threat;
+    const S = E.newState(E.START, 1); const ok = [];
+    for (const m of d.moves) {
+      if (!E.legalMoves(S).includes(m)) break;
+      const nota = E.notation(S.b, m); const side = S.side;
+      E.make(S, m); ok.push({ m, nota, side });
+    }
+    G.moves = ok; rebuild(ok.length);
+    if (typeof d.feed === 'string' && d.feed) {
+      $('#feed').innerHTML = d.feed;
+      document.querySelectorAll('#feed .acts button').forEach((x) => { x.disabled = true; });
+    }
+    checkOver();
+    restoring = false;
+    addMsg('system', `↻ 已恢復上次的棋局（共 ${ok.length} 步）。`);
+    if (G.over) announceOver();
+    else if (G.S.side === -1) { G.waitNext = true; setStatus('按「下一步」讓電腦走'); }
+    $('#feed').scrollTop = $('#feed').scrollHeight;
+    G.anchor = null;
+    return true;
+  }
+
   // ---------- hint / thinking / eval ----------
   async function getHintData() {
     if (G.hintData) return G.hintData;
@@ -1151,7 +1216,7 @@ function ENGINE(isWorker) {
     return r;
   }
 
-  const canAct = () => !G.busy && !G.over && !G.awaiting && G.S.side === 1;
+  const canAct = () => !G.busy && !G.over && !G.awaiting && !G.waitNext && G.S.side === 1;
 
   async function hint(full) {
     if (!canAct()) return;
@@ -1417,9 +1482,11 @@ function ENGINE(isWorker) {
   $('#btnNew').onclick = () => { G.busy = false; resetGame(); };
   $('#btnUndo').onclick = () => undo();
   $('#btnHint').onclick = () => hint(false);
+  $('#btnNext').onclick = () => nextStep();
+  ['#selLevel', '#optCoach', '#optPause'].forEach((id) => { $(id).addEventListener('change', () => save()); });
   $('#btnThink').onclick = () => thinkingGuide();
   $('#btnEval').onclick = () => evalPosition();
-  $('#optThreat').onchange = () => draw();
+  $('#optThreat').onchange = () => { draw(); save(); };
   $('#btnMore').onclick = () => {
     const open = $('.panel').classList.toggle('open');
     $('#btnMore').setAttribute('aria-expanded', String(open));
@@ -1427,7 +1494,7 @@ function ENGINE(isWorker) {
   $('#askForm').onsubmit = (e) => { e.preventDefault(); const v = $('#askInput').value; $('#askInput').value = ''; onQuestion(v); };
   window.addEventListener('resize', resize);
 
-  resetGame();
+  if (!restore()) resetGame();
   resize();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => draw());
   checkLLM();
