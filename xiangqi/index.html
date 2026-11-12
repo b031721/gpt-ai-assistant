@@ -377,6 +377,7 @@ function ENGINE(isWorker) {
     const killers = []; for (let i = 0; i < 128; i += 1) killers.push([0, 0]);
     const histT = new Int32Array(8100);
     let rootBest = 0; let rootScore = -INF;
+    const rootSide = S.side; const contempt = opt.contempt === undefined ? 120 : opt.contempt;
     if (TT.size > 600000) TT = new Map();
 
     const evalS = () => {
@@ -423,7 +424,12 @@ function ENGINE(isWorker) {
     }
 
     function nm(depth, alpha, beta, ply) {
-      if (ply > 0 && (hist.has(S.h1) || path.includes(S.h1))) return 0;
+      if (ply > 0 && (hist.has(S.h1) || path.includes(S.h1))) {
+        // repeating by checking (長將) is not allowed: it counts against the side that keeps checking
+        if (inCheck(S, S.side)) return 400;
+        // otherwise a repetition is a draw, which neither side should want while the game is still open
+        return S.side === rootSide ? -contempt : contempt;
+      }
       const chk = inCheck(S, S.side);
       if (chk && ply < 24) depth += 1;
       if (depth <= 0) return qs(alpha, beta, ply);
@@ -950,7 +956,7 @@ function ENGINE(isWorker) {
     const nota = E.notation(before, m);
     const mover = G.S.side;
     const cap = E.make(G.S, m);
-    G.moves.push({ m, nota, side: mover, cap });
+    G.moves.push({ m, nota, side: mover, cap, chk: E.inCheck(G.S, G.S.side) });
     G.h1s.push(G.S.h1); G.keys.push(`${G.S.h1}:${G.S.h2}`);
     G.lastMove = m; G.hintData = null; G.hintStage = 0; G.marks = [];
     checkOver();
@@ -967,7 +973,15 @@ function ENGINE(isWorker) {
       return;
     }
     const k = G.keys[G.keys.length - 1];
-    if (G.keys.filter((x) => x === k).length >= 3) { G.over = 'draw'; G.overReason = '同一局面重複三次'; }
+    const seen = []; G.keys.forEach((x, i) => { if (x === k) seen.push(i); });
+    if (seen.length >= 3) {
+      const span = G.moves.slice(seen[seen.length - 3]);
+      const redAll = span.filter((x) => x.side === 1).every((x) => x.chk);
+      const blackAll = span.filter((x) => x.side === -1).every((x) => x.chk);
+      if (redAll && !blackAll) { G.over = 'lose'; G.overReason = '你一直將軍造成重複局面（長將），依規則判負'; }
+      else if (blackAll && !redAll) { G.over = 'win'; G.overReason = '電腦一直將軍造成重複局面（長將），依規則判負'; }
+      else { G.over = 'draw'; G.overReason = '雙方都沒有變著，同一局面重複三次'; }
+    }
   }
 
   function announceOver() {
@@ -984,7 +998,7 @@ function ENGINE(isWorker) {
     keep.forEach((mv) => {
       if (mv.side === -1) G.lastAi = { m: mv.m, bBefore: Array.from(G.S.b) };
       const cap = E.make(G.S, mv.m);
-      G.moves.push({ ...mv, cap }); G.h1s.push(G.S.h1); G.keys.push(`${G.S.h1}:${G.S.h2}`); G.lastMove = mv.m;
+      G.moves.push({ ...mv, cap, chk: E.inCheck(G.S, G.S.side) }); G.h1s.push(G.S.h1); G.keys.push(`${G.S.h1}:${G.S.h2}`); G.lastMove = mv.m;
     });
     G.selected = -1; G.targets = []; G.arrow = null; G.marks = []; G.focus = -1; G.hintData = null; G.hintStage = 0; G.awaiting = false;
     updateMoves(); draw(); save();
@@ -1010,6 +1024,10 @@ function ENGINE(isWorker) {
     const bBefore = cloneBoard(); const hist = histBefore();
     const r = await animateAndApply(m);
     addMsg('user', `你走 <b>${r.nota}</b>${r.cap ? `，吃掉對方的${E.pieceName(r.cap)}` : ''}。`);
+    const kNow = G.keys[G.keys.length - 1];
+    if (!G.over && G.moves[G.moves.length - 1].chk && G.keys.filter((x) => x === kNow).length === 2) {
+      addMsg('warn', '⚠️ 這個局面已經出現第二次了。如果你繼續用將軍造成重複（長將），依規則會<b>判你輸</b>，下次要換一步。');
+    }
     if (G.over) { G.busy = false; announceOver(); return; }
     if (opts().coach) {
       setStatus('教練正在看你這步…', true);
