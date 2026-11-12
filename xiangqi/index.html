@@ -71,6 +71,14 @@
   .msg.me { background: #fff; border: 1px solid var(--line); border-left: 4px solid #6d8fb5; align-self: flex-end; max-width: 90%; }
   .msg ol, .msg ul { margin: 4px 0; padding-left: 20px; }
   .msg .acts { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .msg.turn { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent); font-size: 15.5px; padding: 10px 12px; }
+  .msg.turn .h { font-weight: 700; margin-bottom: 2px; }
+  .msg.turn .sec + .sec { border-top: 1px dashed var(--line); margin-top: 8px; padding-top: 8px; }
+  .msg.turn .caution .h { color: var(--warn); }
+  .msg.turn .sug .h { color: var(--good); }
+  .msg.turn .sug .big { font-size: 24px; font-weight: 700; letter-spacing: 1px; }
+  .muted { color: var(--muted); font-size: 13.5px; }
+  .bar #status { flex: 1; min-width: 0; }
   .mv { font-weight: 700; color: var(--accent); border-bottom: 1px dashed var(--accent); cursor: pointer; white-space: nowrap; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 14px 0; border-top: 1px solid var(--line); }
   .chips button { font-size: 12.5px; padding: 4px 8px; border-radius: 999px; }
@@ -84,7 +92,7 @@
     .panel { order: -1; }
     .panel { min-height: 0; }
     .head { padding: 6px 10px; }
-    .title h1 { display: none; }
+    .title { display: none; }
     .bar { gap: 5px; margin-top: 2px; }
     .bar button { padding: 5px 9px; }
     #btnMore { display: inline-block; }
@@ -100,24 +108,24 @@
   <div id="boardWrap"><canvas id="board"></canvas></div>
   <div class="panel">
     <div class="head">
-      <div class="title"><h1>象棋教練</h1><span id="status">輪到你了（紅方）</span></div>
+      <div class="title"><h1>象棋教練</h1></div>
       <div class="row bar">
-        <button id="btnHint" class="primary">提示</button>
-        <button id="btnNext" class="primary">下一步</button>
+        <span id="status">輪到你了（紅方）</span>
         <button id="btnUndo">悔棋</button>
-        <button id="btnThink">怎麼想？</button>
-        <button id="btnEval">局勢</button>
         <button id="btnNew">新局</button>
         <button id="btnMore" type="button" aria-expanded="false">設定</button>
       </div>
       <div class="more">
         <div class="row">
+          <select id="selCoach" title="提醒模式">
+            <option value="std" selected>標準模式：每步提醒</option>
+            <option value="off">正常模式：不提醒</option>
+          </select>
           <select id="selLevel" title="電腦難度">
             <option value="easy">入門</option>
             <option value="medium" selected>中級</option>
             <option value="hard">高級</option>
           </select>
-          <label class="tg"><input type="checkbox" id="optCoach" checked>每步點評</label>
           <label class="tg"><input type="checkbox" id="optPause" checked>失誤時先暫停</label>
           <label class="tg"><input type="checkbox" id="optThreat" checked>標示危險棋子</label>
         </div>
@@ -651,7 +659,7 @@ function ENGINE(isWorker) {
   // ---------- game state ----------
   const G = {};
   const opts = () => ({
-    coach: $('#optCoach').checked, pause: $('#optPause').checked, threat: $('#optThreat').checked,
+    coach: $('#selCoach').value !== 'off', pause: $('#optPause').checked, threat: $('#optThreat').checked,
   });
 
   function resetGame() {
@@ -663,10 +671,10 @@ function ENGINE(isWorker) {
     G.lastAnalysis = null; G.lastAi = null; G.threat = null; G.chat = []; G.waitNext = false; G.anchor = null;
     G.gen = (G.gen || 0) + 1;
     $('#feed').innerHTML = '';
-    addMsg('coach', `歡迎！你執<b style="color:var(--red)">紅方</b>（下方），先走。點一下棋子再點目的地就能走棋。<br>
-      我會在你每一步之後點評：好棋會稱讚你，走得不好會告訴你<b>為什麼</b>、<b>對方會怎麼回應</b>、以及<b>更好的想法</b>。
-      不知道怎麼走時按「提示」（按一次給思路，再按一次給答案），或按「我該怎麼想？」讓我帶你一步步思考。也可以在下方直接問我問題。`);
+    addMsg('coach', `你執<b style="color:var(--red)">紅方</b>（下方），先走。點棋子，再點藍點就能走。<br>
+      <b>標準模式</b>：輪到你時，我會直接告訴你<b>建議走哪一步</b>（棋盤上的<b style="color:var(--good)">綠色箭頭</b>）和原因；電腦每走一步，我會說明<b>它想做什麼、你要小心什麼</b>。不想要提醒的話，到「設定」改成正常模式。`);
     updateMoves(); setStatus('輪到你了（紅方）'); draw(); save();
+    if (!restoring && opts().coach) setTimeout(() => turnCard(G.gen, null), 50);
   }
 
   const cloneBoard = () => Array.from(G.S.b);
@@ -690,7 +698,7 @@ function ENGINE(isWorker) {
     const feed = $('#feed');
     const d = document.createElement('div');
     d.className = `msg ${type}`;
-    const who = { coach: '教練', good: '教練', warn: '教練', bad: '教練', ai: '電腦（黑方）', user: '你（紅方）', me: '你問', system: '' }[type] || '';
+    const who = { turn: '教練', coach: '教練', good: '教練', warn: '教練', bad: '教練', ai: '電腦（黑方）', user: '你（紅方）', me: '你問', system: '' }[type] || '';
     d.innerHTML = (who ? `<span class="who">${who}</span>` : '') + html;
     if (actions && actions.length) {
       const box = document.createElement('div'); box.className = 'acts';
@@ -703,7 +711,7 @@ function ENGINE(isWorker) {
     }
     feed.appendChild(d);
     // keep the start of the current exchange in view (your move + the coach's feedback)
-    if (type === 'user' || type === 'me') G.anchor = d;
+    if (type === 'user' || type === 'me' || type === 'turn') G.anchor = d;
     const anchor = G.anchor && G.anchor.isConnected ? G.anchor : d;
     feed.scrollTop = Math.min(feed.scrollHeight - feed.clientHeight, Math.max(0, anchor.offsetTop - 6));
     save();
@@ -989,8 +997,9 @@ function ENGINE(isWorker) {
     while (n > 0 && G.moves[n].side !== 1) n -= 1; // back to before the last red move
     if (G.moves[n] && G.moves[n].side !== 1) return;
     rebuild(n);
-    addMsg('system', '↩️ 已悔棋，回到你走棋之前。再想一想，換一步試試看！');
+    addMsg('system', '↩️ 已悔棋，回到你走棋之前。');
     setStatus('輪到你了（紅方）');
+    if (opts().coach) turnCard(G.gen, null);
   }
 
   // ---------- turn flow ----------
@@ -1081,9 +1090,9 @@ function ENGINE(isWorker) {
     const bBefore = cloneBoard();
     const r = await animateAndApply(res.move);
     G.lastAi = { m: res.move, bBefore };
+    if (G.over) { addMsg('ai', describeAiMove(bBefore, res.move, r)); G.busy = false; announceOver(); return; }
+    if (opts().coach) { await turnCard(myGen, { m: res.move, bBefore, nota: r.nota }); return; }
     addMsg('ai', describeAiMove(bBefore, res.move, r));
-    if (G.over) { G.busy = false; announceOver(); return; }
-    if (opts().coach) await coachBeforeTurn(myGen);
     if (myGen !== G.gen) return;
     G.busy = false; G.anchor = null; setStatus('輪到你了（紅方）'); draw();
   }
@@ -1111,6 +1120,43 @@ function ENGINE(isWorker) {
       return { move: t.move, desc, nota: E.notation(b, t.move), mate: t.score > MATE - 300, target: q ? t.move % 90 : -1 };
     }
     return null;
+  }
+
+  // One card per turn: what the computer did, what to watch out for, and the move to play.
+  async function turnCard(myGen, ai) {
+    if (G.over || G.S.side !== 1 || myGen !== G.gen) return;
+    G.busy = true; setStatus('教練正在幫你看下一步…', true);
+    const b = cloneBoard();
+    const hang = E.hanging(b, 1);
+    const th = await threatInfo();
+    if (myGen !== G.gen) return;
+    const r = await getHintData();
+    if (myGen !== G.gen) return;
+    const parts = [];
+    if (ai) {
+      const chk = E.inCheck(G.S, 1);
+      parts.push(`<div class="sec"><div class="h">電腦走了 ${ai.nota}${chk ? '　<span style="color:var(--bad)">將軍！</span>' : ''}</div>它的用意：${moveReason(ai.bBefore, ai.m, -1)}。</div>`);
+    }
+    const warn = [];
+    if (th && th.inCheck) warn.push('你被將軍了，這步一定要先解將（吃掉、擋住或移開帥）。');
+    hang.slice(0, 3).forEach((h) => {
+      warn.push(`你的<b>${E.pieceName(b[h.sq])}</b>（${sqName(h.sq)}）正被對方的${names(b, h.atk)}攻擊${h.def.length ? '，被換掉會吃虧' : '，而且<b>沒有保護</b>'}。`);
+    });
+    if (th && !th.inCheck) warn.push(`對方下一步想走 <b>${th.nota}</b>，${th.desc}。`);
+    if (warn.length) parts.push(`<div class="sec caution"><div class="h">⚠️ 要小心</div><ul>${warn.map((w) => `<li>${w}</li>`).join('')}</ul></div>`);
+    if (r && r.move) {
+      const after = E.applyArr(b, r.move);
+      const pv = r.pv && r.pv.length > 1 ? pvText(after, r.pv.slice(1), 4) : '';
+      const why = moveReason(b, r.move, 1);
+      const handles = /安全|保護|吃掉|將/.test(why) || (th && th.inCheck);
+      const note = warn.length && !handles ? '<div class="muted">這步沒有直接處理上面的威脅：教練算過，先走這步比較重要，對方就算吃了你也不會吃虧。</div>' : '';
+      parts.push(`<div class="sec sug"><div class="h">👉 建議你走</div><div class="big">${mvSpan(b, r.move)}</div><div>為什麼：${why}。</div>${note}${pv ? `<div class="muted">之後可能：${pv}</div>` : ''}<div class="muted">局勢：${scoreText(r.score)}</div></div>`);
+      G.arrow = { m: r.move, color: 'rgba(40,140,80,.85)' };
+    }
+    G.marks = hang.map((h) => h.sq);
+    if (th && th.target >= 0 && !G.marks.includes(th.target)) G.marks.push(th.target);
+    addMsg('turn', parts.join(''));
+    G.busy = false; G.anchor = null; setStatus('輪到你了：綠色箭頭是建議'); draw();
   }
 
   async function coachBeforeTurn(myGen) {
@@ -1169,7 +1215,7 @@ function ENGINE(isWorker) {
     try {
       const feed = [...$('#feed').children].slice(-40).map((d) => d.outerHTML).join('');
       localStorage.setItem(STORE_KEY, JSON.stringify({
-        moves: G.moves.map((x) => x.m), level: $('#selLevel').value, coach: $('#optCoach').checked, pause: $('#optPause').checked, threat: $('#optThreat').checked, feed,
+        moves: G.moves.map((x) => x.m), level: $('#selLevel').value, coach: $('#selCoach').value, pause: $('#optPause').checked, threat: $('#optThreat').checked, feed,
       }));
     } catch (e) { /* storage unavailable */ }
   }
@@ -1180,7 +1226,7 @@ function ENGINE(isWorker) {
     restoring = true;
     resetGame();
     if (d.level) $('#selLevel').value = d.level;
-    if (typeof d.coach === 'boolean') $('#optCoach').checked = d.coach;
+    if (d.coach === 'std' || d.coach === 'off') $('#selCoach').value = d.coach;
     if (typeof d.pause === 'boolean') $('#optPause').checked = d.pause;
     if (typeof d.threat === 'boolean') $('#optThreat').checked = d.threat;
     const S = E.newState(E.START, 1); const ok = [];
@@ -1201,6 +1247,7 @@ function ENGINE(isWorker) {
     $('#feed').scrollTop = $('#feed').scrollHeight;
     G.anchor = null;
     if (!G.over && G.S.side === -1) aiTurn(); // resume: the computer moves on its own
+    else if (!G.over && opts().coach) turnCard(G.gen, null);
     return true;
   }
 
@@ -1209,7 +1256,7 @@ function ENGINE(isWorker) {
     if (G.hintData) return G.hintData;
     const myGen = G.gen;
     G.busy = true; setStatus('教練思考中…', true);
-    const r = await ask('search', { b: cloneBoard(), side: 1, opts: { timeMs: 1500, maxDepth: 16, hist: histBefore() } });
+    const r = await ask('search', { b: cloneBoard(), side: 1, opts: { timeMs: 1200, maxDepth: 16, hist: histBefore() } });
     G.busy = false; setStatus('輪到你了（紅方）');
     if (myGen !== G.gen) return null;
     G.hintData = r;
@@ -1463,7 +1510,7 @@ function ENGINE(isWorker) {
   function blockedNote() {
     let t;
     if (G.over) t = '這盤已經結束了，按「新局」重新開始，或按「悔棋」退回去。';
-    else if (G.awaiting) t = '剛才那步有問題，請先按訊息裡的「悔棋重下」或「照走，繼續」（或按「下一步」照走）。';
+    else if (G.awaiting) t = '剛才那步有問題，請先按訊息裡的「悔棋重下」或「照走，繼續」。';
     else if (G.waitNext) t = '現在輪到電腦，按「下一步」讓電腦走。';
     else if (G.busy) t = '電腦正在思考，請稍等一下。';
     else return;
@@ -1492,11 +1539,12 @@ function ENGINE(isWorker) {
 
   $('#btnNew').onclick = () => { G.busy = false; resetGame(); };
   $('#btnUndo').onclick = () => undo();
-  $('#btnHint').onclick = () => hint(false);
-  $('#btnNext').onclick = () => nextStep();
-  ['#selLevel', '#optCoach', '#optPause'].forEach((id) => { $(id).addEventListener('change', () => save()); });
-  $('#btnThink').onclick = () => thinkingGuide();
-  $('#btnEval').onclick = () => evalPosition();
+  ['#selLevel', '#optPause'].forEach((id) => { $(id).addEventListener('change', () => save()); });
+  $('#selCoach').addEventListener('change', () => {
+    save();
+    if (!opts().coach) { G.arrow = null; G.marks = []; draw(); addMsg('system', '已切換成正常模式：不再自動提醒。'); }
+    else { addMsg('system', '已切換成標準模式：每步都會提醒。'); if (canAct()) turnCard(G.gen, null); }
+  });
   $('#optThreat').onchange = () => { draw(); save(); };
   $('#btnMore').onclick = () => {
     const open = $('.panel').classList.toggle('open');
