@@ -83,7 +83,8 @@
   .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 14px 0; border-top: 1px solid var(--line); }
   .chips button { font-size: 12.5px; padding: 4px 8px; border-radius: 999px; }
   .ask { display: flex; gap: 6px; padding: 8px 14px 12px; }
-  .ask input { flex: 1; font: inherit; font-size: 15px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; min-width: 0; }
+  .ask textarea { flex: 1; font: inherit; font-size: 16px; line-height: 1.4; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); min-width: 0; resize: none; max-height: 120px; }
+  .ask { align-items: flex-end; border-bottom: 1px solid var(--line); }
   .moves { font-size: 12.5px; color: var(--muted); padding: 6px 14px; border-top: 1px solid var(--line); max-height: 64px; overflow-y: auto; }
   #btnMore { display: none; }
   @media (max-width: 980px) {
@@ -131,12 +132,12 @@
         </div>
       </div>
     </div>
-    <div id="feed"></div>
-    <div class="moves" id="moves"></div>
     <form class="ask" id="askForm">
-      <input id="askInput" placeholder="問教練問題…" autocomplete="off">
+      <textarea id="askInput" rows="1" placeholder="問教練問題，例如：為什麼我的兵不能吃？" autocomplete="off"></textarea>
       <button class="primary" type="submit">問</button>
     </form>
+    <div id="feed"></div>
+    <div class="moves" id="moves"></div>
   </div>
 </div>
 
@@ -1405,6 +1406,7 @@ function ENGINE(isWorker) {
     <li>車是殘局的主力；單車通常能贏對方的仕相不全。</li>
     <li>炮需要炮架，殘局子少時威力會下降；馬在子少時反而比較靈活。</li></ol>`;
 
+  const samplerP = window.claude && window.claude.use ? window.claude.use('sample').catch(() => null) : Promise.resolve(null);
   let llmReady = null;
   const API_BASE = location.protocol.startsWith('http') ? location.pathname.replace(/\/(index\.html)?$/, '') : null;
   async function checkLLM() {
@@ -1478,13 +1480,74 @@ function ENGINE(isWorker) {
 
   async function onQuestion(q) { await answerQuestion(q); G.anchor = null; }
 
+  // facts the coach can quote: moves the student cannot make right now, and why
+  function illegalFacts() {
+    if (G.S.side !== 1) return '';
+    const b = cloneBoard(); const legal = new Set(E.legalMoves(G.S));
+    return E.gen(G.S, 1, false, []).filter((m) => !legal.has(m)).slice(0, 12)
+      .map((m) => `${E.notation(b, m)}：${illegalReason(b, m).replace(/<[^>]+>/g, '')}`).join('\n');
+  }
+  async function askClaude(q) {
+    const sample = await samplerP;
+    if (!sample && !(await checkLLM())) return false;
+    const box = addMsg('coach', '思考中…（第一次使用時，畫面可能會先問你是否允許）');
+    const b = cloneBoard();
+    let ctxText = '';
+    try { ctxText = (!G.busy || G.hintData) ? await engineContext() : ''; } catch (e) { ctxText = ''; }
+    const legalList = G.S.side === 1 ? E.legalMoves(G.S).map((m) => E.notation(b, m)).join('、') : '';
+    const history = G.chat.slice(-6).map((t) => `${t.role === 'user' ? '學生' : '教練'}：${t.content}`).join('\n');
+    const prompt = [
+      '你是一位親切、有耐心的中國象棋教練，正在手機上指導學生和電腦對弈。學生執紅方（棋盤下方），電腦執黑方（上方）。',
+      '回答規則：用繁體中文、口語清楚，先直接回答學生的問題，再補充原因；盡量 200 字以內，可條列。棋盤、合法著法、不能走的原因與引擎建議一律以下面的資料為準，不要自己猜棋子位置；資料裡已有答案就直接用。規則解釋要正確（兵卒過河前後、炮架、蹩馬腿、塞象眼、送將、王不見王、長將判負）。提到棋步用中文記譜。',
+      `【目前棋盤】（上方是黑方，下方是紅方；＋是空點）\n${boardText(b)}`,
+      `【棋譜】${G.moves.map((x) => x.nota).join(' ') || '（尚未開始）'}`,
+      `【引擎分析】\n${ctxText || '（無）'}`,
+      `【紅方現在不能走的著法與原因】\n${illegalFacts() || '（無）'}`,
+      `【紅方所有合法著法】${legalList || '（現在不是紅方走）'}`,
+      history ? `【之前的對話】\n${history}` : '',
+      `【學生的問題】${q}`,
+    ].filter(Boolean).join('\n\n');
+    const show = (t) => { box.innerHTML = `<span class="who">教練</span>${esc(t).replace(/\n/g, '<br>')}`; };
+    try {
+      let answer;
+      if (sample) {
+        const r = await sample(prompt, { cache: false, onText: ({ text }) => show(text) });
+        answer = r.text;
+      } else {
+        const res = await fetch(`${API_BASE}/api/ask`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: q, board: boardText(b), moves: G.moves.map((x) => x.nota).join(' '), engine: `${ctxText}\n${illegalFacts()}`, chat: G.chat.slice(-6) }),
+        });
+        const j = await res.json();
+        if (!res.ok || !j.answer) throw new Error(j.error || 'no answer');
+        answer = j.answer;
+      }
+      show(answer);
+      G.chat.push({ role: 'user', content: q }, { role: 'assistant', content: answer });
+      return true;
+    } catch (e) {
+      if (e && (e.code === 'not_granted' || e.code === 'sampling_disabled' || e.code === 'capability_disabled')) { box.remove(); return false; }
+      if (e && e.text) { show(`${e.text}\n（回答被中斷了）`); return true; }
+      box.innerHTML = `<span class="who">教練</span>${e && e.code === 'rate_limited' ? '問得有點快，請稍等一下再問。' : '剛剛連線出了點問題，請再問一次。'}`;
+      return true;
+    }
+  }
+
   async function answerQuestion(qRaw) {
     const q = qRaw.trim();
     if (!q) return;
     addMsg('me', esc(q));
+    if (await askClaude(q)) return;
     // engine-backed commands answered locally for precision
     const has = (re) => re.test(q);
     const pieceKey = Object.keys(PIECE_CHARS).find((ch) => q.includes(ch));
+    if (pieceKey && has(/不能|不可以|沒辦法|為什麼不/) && G.S.side === 1) {
+      const t = ['', 'K', 'A', 'B', 'N', 'R', 'C', 'P'].indexOf(PIECE_CHARS[pieceKey]);
+      const b = cloneBoard(); const legal = new Set(E.legalMoves(G.S));
+      const bad = E.gen(G.S, 1, false, []).filter((m) => !legal.has(m) && b[(m / 90) | 0] === t);
+      if (bad.length) { addMsg('coach', `${bad.slice(0, 3).map((m) => `<b>${E.notation(b, m)}</b> 不能走：${illegalReason(b, m)}`).join('<br>')}`); return; }
+      addMsg('coach', `${RULES[PIECE_CHARS[pieceKey]]}<br>如果是某一步點了沒反應，先點那顆子，再點你想去的位置，我會告訴你為什麼不能走。`); return;
+    }
     if (has(/怎麼想|思路|思考|想法/)) { await thinkingGuide(); return; }
     if (pieceKey && has(/怎麼走|走法|規則|怎麼動|怎麼吃|能不能|可以走/)) { addMsg('coach', RULES[PIECE_CHARS[pieceKey]]); return; }
     const term = Object.keys(TERMS).find((t) => q.includes(t));
@@ -1499,26 +1562,6 @@ function ENGINE(isWorker) {
     if (has(/開局|佈局|布局/)) { addMsg('coach', OPENING); return; }
     if (has(/殘局/)) { addMsg('coach', ENDGAME); return; }
 
-    // free-form question → LLM coach (if server configured), grounded by engine facts
-    if (await checkLLM()) {
-      const thinking = addMsg('coach', '思考中…');
-      try {
-        const ctxText = await engineContext();
-        const res = await fetch(`${API_BASE}/api/ask`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            question: q, board: boardText(cloneBoard()), moves: G.moves.map((m) => m.nota).join(' '), engine: ctxText, chat: G.chat.slice(-6),
-          }),
-        });
-        const j = await res.json();
-        if (!res.ok || !j.answer) throw new Error(j.error || 'no answer');
-        thinking.innerHTML = `<span class="who">教練</span>${esc(j.answer).replace(/\n/g, '<br>')}`;
-        G.chat.push({ role: 'user', content: q }, { role: 'assistant', content: j.answer });
-        return;
-      } catch (e) {
-        thinking.remove();
-      }
-    }
     if (has(/規則|怎麼玩|輸贏/)) { addMsg('coach', `${Object.values(RULES).join('<br>')}<br>把對方的將「將死」或「困斃」就贏了。`); return; }
     if (pieceKey) { addMsg('coach', RULES[PIECE_CHARS[pieceKey]]); return; }
     addMsg('coach', `這個問題我目前只能簡單回答（伺服器未設定 AI 對話服務）。你可以這樣問我：<ul>
@@ -1537,6 +1580,24 @@ function ENGINE(isWorker) {
     if (!last || !last.textContent.includes(t)) addMsg('system', t);
   }
 
+  // why a move the player tried is not allowed
+  function illegalReason(b, m) {
+    const after = E.applyArr(b, m); const S2 = E.newState(after, -1); const kSq = after.indexOf(K);
+    const atk = E.gen(S2, -1, true, []).filter((x) => x % 90 === kSq).map((x) => (x / 90) | 0);
+    if (!atk.length) return '走了之後兩個將帥會在同一直線上直接見面（王不見王），規則不允許。';
+    const a = atk[0]; const ap = after[a];
+    let how = '';
+    if (ap === -C) how = '對方的砲和你的帥之間會<b>正好只剩一個子</b>，那個子就變成砲的「炮架」，砲可以隔著它直接打到帥。';
+    else if (ap === -N) how = '對方的馬可以直接跳到你的帥（馬腿沒有被擋住）。';
+    else if (ap === -R) how = '對方的車和你的帥之間會變成沒有東西擋。';
+    return `走了之後，你的帥會被對方的${E.pieceName(ap)}將軍。${how}自己讓自己被將軍叫「送將」，規則不允許。`;
+  }
+  function explainIllegal(from, to) {
+    const b = cloneBoard(); const m = from * 90 + to; const p = b[from];
+    if (E.gen(G.S, 1, false, []).includes(m)) addMsg('warn', `❌ ${E.pieceName(p)}不能走到那裡：${illegalReason(b, m)}`);
+    else addMsg('coach', `${E.pieceName(p)}不能這樣走。${RULES[['', 'K', 'A', 'B', 'N', 'R', 'C', 'P'][Math.abs(p)]]}`);
+  }
+
   // ---------- input ----------
   cv.addEventListener('click', (e) => {
     const rect = cv.getBoundingClientRect();
@@ -1548,10 +1609,14 @@ function ENGINE(isWorker) {
     if (!canAct()) { blockedNote(); return; }
     const p = G.S.b[sq];
     if (G.selected >= 0 && G.targets.includes(sq)) { userMove(G.selected * 90 + sq); return; }
+    if (G.selected >= 0 && !(p > 0)) { explainIllegal(G.selected, sq); G.selected = -1; G.targets = []; draw(); return; }
     if (p > 0) {
       G.selected = sq;
       G.targets = E.legalMoves(G.S).filter((m) => ((m / 90) | 0) === sq).map((m) => m % 90);
-      if (!G.targets.length && E.inCheck(G.S, 1)) setStatus('被將軍中，這個子不能解將');
+      if (!G.targets.length) {
+        const pseudo = E.gen(G.S, 1, false, []).filter((m) => ((m / 90) | 0) === sq);
+        if (pseudo.length) addMsg('warn', `這個${E.pieceName(p)}現在<b>哪裡都不能走</b>：${illegalReason(cloneBoard(), pseudo[0])}`);
+      }
     } else { G.selected = -1; G.targets = []; }
     draw();
   });
@@ -1569,7 +1634,14 @@ function ENGINE(isWorker) {
     const open = $('.panel').classList.toggle('open');
     $('#btnMore').setAttribute('aria-expanded', String(open));
   };
-  $('#askForm').onsubmit = (e) => { e.preventDefault(); const v = $('#askInput').value; $('#askInput').value = ''; onQuestion(v); };
+  const askBox = $('#askInput');
+  const grow = () => { askBox.style.height = 'auto'; askBox.style.height = `${Math.min(askBox.scrollHeight, 120)}px`; };
+  askBox.addEventListener('input', grow);
+  // Enter sends on a physical keyboard, but never while a Chinese input method is still composing
+  askBox.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229 && !('ontouchstart' in window)) { e.preventDefault(); $('#askForm').requestSubmit(); }
+  });
+  $('#askForm').onsubmit = (e) => { e.preventDefault(); const v = askBox.value; askBox.value = ''; grow(); askBox.blur(); onQuestion(v); };
   window.addEventListener('resize', resize);
 
   if (!restore()) resetGame();
