@@ -2,7 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import config from '../config/index.js';
 
-const PAGE_URL = new URL('./index.html', import.meta.url);
+const PAGE_URL = new URL('../docs/chess/index.html', import.meta.url);
 let page = null;
 
 const router = express.Router();

@@ -5,7 +5,7 @@ import {
   createChatCompletion, ROLE_AI, ROLE_HUMAN, ROLE_SYSTEM,
 } from '../services/openai.js';
 
-const PAGE_URL = new URL('./index.html', import.meta.url);
+const PAGE_URL = new URL('../docs/xiangqi/index.html', import.meta.url);
 let page = null;
 const loadPage = () => {
   if (!page || config.APP_DEBUG) page = fs.readFileSync(PAGE_URL, 'utf8');

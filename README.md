@@ -22,11 +22,15 @@ GPT AI Assistant is an application that is implemented using the OpenAI API and 
 
 A full-size Chinese chess (象棋) board where you (red) play against the computer (black), with a built-in coach.
 
-- Open `/xiangqi` on the deployed app (or open `xiangqi/index.html` directly in a browser).
+- Open `/xiangqi` on the deployed app (or open `docs/xiangqi/index.html` directly in a browser).
 - After every move the coach rates it. If it was a mistake, the coach shows the opponent's punishing reply, a better move, and how to think about it, then pauses so you can take the move back (悔棋).
 - In standard mode (標準模式), each of your turns shows one coach card. It explains the computer's last move, lists what to watch out for, and suggests your move with a green arrow. Normal mode (正常模式) turns the coaching off.
 - Pieces that are in danger are circled. You can ask questions in the chat box (rules, terms, threats, "what should I play?").
 - Open-ended questions go to the OpenAI chat model through `POST /xiangqi/api/ask`, using `OPENAI_API_KEY`. The engine's analysis is passed along so the answer stays accurate. Without a key, the built-in coach answers instead.
+
+## 棋類遊戲網站（GitHub Pages）
+
+The three game pages are in `docs/`, along with a menu page (`docs/index.html`). To share them with people who have no account, set GitHub Pages to deploy this branch from the `/docs` folder. The site is then at `https://<user>.github.io/<repo>/`. On the static site, questions are answered by the built-in coach only.
 
 ## 西洋棋教練（Chess Coach）
 
@@ -38,7 +42,7 @@ Chess against the computer at `/chess`, using the same coaching as the xiangqi p
 
 ## 圍棋教練（Go Coach）
 
-A Go board at `/weiqi` (or open `weiqi/index.html` directly) with large (19×19), medium (13×13) and small (9×9) sizes. You can play against the computer or with a friend.
+A Go board at `/weiqi` (or open `docs/weiqi/index.html` directly) with large (19×19), medium (13×13) and small (9×9) sizes. You can play against the computer or with a friend.
 
 - Uses Chinese area scoring with 7.5 komi. After both players pass, the page enters scoring mode. Likely dead stones are marked automatically, and you can tap a group to change it.
 - The coach warns about groups with only one liberty (in atari), points out stones you can capture, and flags self-atari or an ignored atari.
