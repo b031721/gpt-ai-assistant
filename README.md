@@ -24,9 +24,17 @@ A full-size Chinese chess (象棋) board where you (red) play against the comput
 
 - Open `/xiangqi` on the deployed app (or open `xiangqi/index.html` directly in a browser).
 - After every move the coach rates it. If it was a mistake, the coach shows the opponent's punishing reply, a better move, and how to think about it, then pauses so you can take the move back (悔棋).
-- 「提示」 gives a hint in two steps: first the idea, then the move. 「我該怎麼想？」 walks through a thinking checklist for the current position.
+- In standard mode (標準模式), each of your turns shows one coach card. It explains the computer's last move, lists what to watch out for, and suggests your move with a green arrow. Normal mode (正常模式) turns the coaching off.
 - Pieces that are in danger are circled. You can ask questions in the chat box (rules, terms, threats, "what should I play?").
 - Open-ended questions go to the OpenAI chat model through `POST /xiangqi/api/ask`, using `OPENAI_API_KEY`. The engine's analysis is passed along so the answer stays accurate. Without a key, the built-in coach answers instead.
+
+## 西洋棋教練（Chess Coach）
+
+Chess against the computer at `/chess`, using the same coaching as the xiangqi page.
+
+- In standard mode (標準模式), each of your turns shows one coach card. It explains the computer's last move, lists what to watch out for, and suggests your move with a green arrow.
+- Normal mode (正常模式) turns the coaching off.
+- Full rules: castling, en passant, promotion (always to a queen when you move), and draws by stalemate, threefold repetition, the 50-move rule and insufficient material. Move generation is checked with perft.
 
 ## 圍棋教練（Go Coach）
 

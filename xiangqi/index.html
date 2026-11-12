@@ -755,6 +755,7 @@ function ENGINE(isWorker) {
     const f = (m / 90) | 0; const t = m % 90; const p = b[f]; const q = b[t]; const ty = Math.abs(p);
     const reasons = [];
     const enemyWord = side === 1 ? '對方' : '你';
+    if (E.inCheck(E.newState(b, side), side)) reasons.push(ty === K ? '移動帥將，躲開將軍' : '解除將軍');
     if (q) reasons.push(`吃掉${enemyWord}的${E.pieceName(q)}`);
     const after = E.applyArr(b, m);
     const S2 = E.newState(after, -side);

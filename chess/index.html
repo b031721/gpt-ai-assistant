@@ -1,0 +1,1001 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>西洋棋教練</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Symbols+2&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+  /* Layout: walnut-and-maple board beside a coach's notebook; on phones the notebook sits on top, board below. */
+  :root {
+    --bg: #e4e1da; --panel: #fffefb; --ink: #22211f; --muted: #6f6a62; --line: #dcd6ca;
+    --btn: #f3efe7; --btn-hover: #e9e3d7; --input: #ffffff;
+    --msg: #f5f2ec; --msg-edge: #cfc5b3;
+    --user: #eef0f5; --user-edge: #8d98ab;
+    --good: #2f7d4a; --good-bg: #edf6ef; --warn: #a8690a; --warn-bg: #fcf3e3;
+    --bad: #b8322a; --bad-bg: #fbeae8; --me-edge: #6d8fb5;
+    --accent: #2f5d8a; --on-accent: #ffffff;
+    --font-ui: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #191a1c; --panel: #232427; --ink: #e9e7e3; --muted: #a39f98; --line: #393a3e;
+    --btn: #2d2e32; --btn-hover: #38393e; --input: #1c1d20;
+    --msg: #2a2b2f; --msg-edge: #55524b;
+    --user: #282c33; --user-edge: #6f7d93;
+    --good: #6cc08a; --good-bg: #233128; --warn: #e0a447; --warn-bg: #352b1c;
+    --bad: #ee7b70; --bad-bg: #3a2422; --me-edge: #7fa2c9;
+    --accent: #8ab4e0; --on-accent: #14202c; color-scheme: dark;
+  } }
+  :root[data-theme="dark"] {
+    --bg: #191a1c; --panel: #232427; --ink: #e9e7e3; --muted: #a39f98; --line: #393a3e;
+    --btn: #2d2e32; --btn-hover: #38393e; --input: #1c1d20;
+    --msg: #2a2b2f; --msg-edge: #55524b;
+    --user: #282c33; --user-edge: #6f7d93;
+    --good: #6cc08a; --good-bg: #233128; --warn: #e0a447; --warn-bg: #352b1c;
+    --bad: #ee7b70; --bad-bg: #3a2422; --me-edge: #7fa2c9;
+    --accent: #8ab4e0; --on-accent: #14202c; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); }
+  .app {
+    display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 16px; height: 100%;
+    padding-block: 12px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  #boardWrap { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; }
+  canvas { display: block; max-width: 100%; border-radius: 6px; box-shadow: 0 10px 30px rgba(20, 20, 30, .3); cursor: pointer; touch-action: manipulation; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+  .head { padding: 10px 14px 8px; border-bottom: 1px solid var(--line); }
+  .title h1 { font-size: 22px; margin: 0; letter-spacing: 2px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+  .bar #status { flex: 1; min-width: 0; font-size: 13px; color: var(--muted); }
+  button, select { font: inherit; font-size: 14px; border: 1px solid var(--line); background: var(--btn); color: var(--ink); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+  button:hover { background: var(--btn-hover); }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  label.tg { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  #feed { position: relative; flex: 1; overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { font-size: 14.5px; line-height: 1.65; padding: 8px 10px; border-radius: 10px; background: var(--msg); border-left: 4px solid var(--msg-edge); }
+  .msg .who { font-size: 12px; color: var(--muted); display: block; margin-bottom: 2px; }
+  .msg.user { background: var(--user); border-left-color: var(--user-edge); }
+  .msg.good { border-left-color: var(--good); background: var(--good-bg); }
+  .msg.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+  .msg.bad { border-left-color: var(--bad); background: var(--bad-bg); }
+  .msg.coach { border-left-color: var(--accent); }
+  .msg.me { background: var(--input); border: 1px solid var(--line); border-left: 4px solid var(--me-edge); align-self: flex-end; max-width: 90%; }
+  .msg ol, .msg ul { margin: 4px 0; padding-left: 20px; }
+  .msg .acts { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .msg.turn { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent); font-size: 15.5px; padding: 10px 12px; }
+  .msg.turn .h { font-weight: 700; margin-bottom: 2px; }
+  .msg.turn .sec + .sec { border-top: 1px dashed var(--line); margin-top: 8px; padding-top: 8px; }
+  .msg.turn .caution .h { color: var(--warn); }
+  .msg.turn .sug .h { color: var(--good); }
+  .msg.turn .sug .big { font-size: 22px; font-weight: 700; }
+  .muted { color: var(--muted); font-size: 13.5px; }
+  .san { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .85em; color: var(--muted); font-weight: 400; }
+  .ask { display: flex; gap: 6px; padding: 8px 14px 12px; border-top: 1px solid var(--line); }
+  .ask input { flex: 1; font: inherit; font-size: 15px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--input); color: var(--ink); min-width: 0; }
+  #btnMore { display: none; }
+  @media (max-width: 980px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; height: 100%; gap: 8px; padding-block: 8px; }
+    .panel { order: -1; min-height: 0; }
+    .head { padding: 6px 10px; }
+    .title { display: none; }
+    .bar { margin-top: 0; }
+    #btnMore { display: inline-block; }
+    .more { display: none; }
+    .panel.open .more { display: block; }
+    .msg { font-size: 16px; }
+    .ask { padding: 6px 10px 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="boardWrap"><canvas id="board" aria-label="西洋棋棋盤"></canvas></div>
+  <div class="panel">
+    <div class="head">
+      <div class="title"><h1>西洋棋教練</h1></div>
+      <div class="row bar">
+        <span id="status">輪到你了（白方）</span>
+        <button id="btnUndo">悔棋</button>
+        <button id="btnNew">新局</button>
+        <button id="btnMore" type="button" aria-expanded="false">設定</button>
+      </div>
+      <div class="more">
+        <div class="row">
+          <select id="selCoach" title="提醒模式">
+            <option value="std" selected>標準模式：每步提醒</option>
+            <option value="off">正常模式：不提醒</option>
+          </select>
+          <select id="selLevel" title="電腦難度">
+            <option value="easy">入門</option>
+            <option value="medium" selected>中級</option>
+            <option value="hard">高級</option>
+          </select>
+          <select id="selColor" title="我執">
+            <option value="1" selected>我執白（先走）</option>
+            <option value="-1">我執黑</option>
+          </select>
+          <label class="tg"><input type="checkbox" id="optPause" checked>失誤時先暫停</label>
+        </div>
+      </div>
+    </div>
+    <div id="feed"></div>
+    <form class="ask" id="askForm">
+      <input id="askInput" placeholder="問教練問題…" autocomplete="off">
+      <button class="primary" type="submit">問</button>
+    </form>
+  </div>
+</div>
+
+<script>
+// ===================== ENGINE-START =====================
+// Self-contained: serialized into a Web Worker via toString(), so it must not use outer variables.
+function ENGINE(isWorker) {
+  const P = 1, N = 2, B = 3, R = 4, Q = 5, K = 6;
+  const VAL = [0, 100, 320, 330, 500, 900, 0];
+  const VALO = [0, 100, 320, 330, 500, 900, 20000];
+  const MATE = 30000, INF = 32000;
+  const PST = [null,
+    [0, 0, 0, 0, 0, 0, 0, 0, 50, 50, 50, 50, 50, 50, 50, 50, 10, 10, 20, 30, 30, 20, 10, 10, 5, 5, 10, 25, 25, 10, 5, 5, 0, 0, 0, 20, 20, 0, 0, 0, 5, -5, -10, 0, 0, -10, -5, 5, 5, 10, 10, -20, -20, 10, 10, 5, 0, 0, 0, 0, 0, 0, 0, 0],
+    [-50, -40, -30, -30, -30, -30, -40, -50, -40, -20, 0, 0, 0, 0, -20, -40, -30, 0, 10, 15, 15, 10, 0, -30, -30, 5, 15, 20, 20, 15, 5, -30, -30, 0, 15, 20, 20, 15, 0, -30, -30, 5, 10, 15, 15, 10, 5, -30, -40, -20, 0, 5, 5, 0, -20, -40, -50, -40, -30, -30, -30, -30, -40, -50],
+    [-20, -10, -10, -10, -10, -10, -10, -20, -10, 0, 0, 0, 0, 0, 0, -10, -10, 0, 5, 10, 10, 5, 0, -10, -10, 5, 5, 10, 10, 5, 5, -10, -10, 0, 10, 10, 10, 10, 0, -10, -10, 10, 10, 10, 10, 10, 10, -10, -10, 5, 0, 0, 0, 0, 5, -10, -20, -10, -10, -10, -10, -10, -10, -20],
+    [0, 0, 0, 0, 0, 0, 0, 0, 5, 10, 10, 10, 10, 10, 10, 5, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 5, 5, 0, 0, 0],
+    [-20, -10, -10, -5, -5, -10, -10, -20, -10, 0, 0, 0, 0, 0, 0, -10, -10, 0, 5, 5, 5, 5, 0, -10, -5, 0, 5, 5, 5, 5, 0, -5, 0, 0, 5, 5, 5, 5, 0, -5, -10, 5, 5, 5, 5, 5, 0, -10, -10, 0, 5, 0, 0, 0, 0, -10, -20, -10, -10, -5, -5, -10, -10, -20],
+    [-30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30, -20, -30, -30, -40, -40, -30, -30, -20, -10, -20, -20, -20, -20, -20, -20, -10, 20, 20, 0, 0, 0, 0, 20, 20, 20, 30, 10, 0, 0, 10, 30, 20],
+  ];
+  const PVT = [];
+  for (let p = -6; p <= 6; p += 1) {
+    PVT[p + 6] = new Int16Array(64);
+    if (!p) continue;
+    for (let sq = 0; sq < 64; sq += 1) {
+      const r = sq >> 3; const c = sq & 7;
+      PVT[p + 6][sq] = p > 0 ? VAL[p] + PST[p][sq] : -(VAL[-p] + PST[-p][(7 - r) * 8 + c]);
+    }
+  }
+  let seed = 0x1F2E3D4C;
+  const rnd = () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return seed | 0; };
+  const Z1 = []; const Z2 = [];
+  for (let i = 0; i < 13; i += 1) { Z1[i] = new Int32Array(64); Z2[i] = new Int32Array(64); for (let s = 0; s < 64; s += 1) { Z1[i][s] = rnd(); Z2[i][s] = rnd(); } }
+  const ZC1 = new Int32Array(16); const ZC2 = new Int32Array(16); for (let i = 0; i < 16; i += 1) { ZC1[i] = rnd(); ZC2[i] = rnd(); }
+  const ZE1 = new Int32Array(8); const ZE2 = new Int32Array(8); for (let i = 0; i < 8; i += 1) { ZE1[i] = rnd(); ZE2[i] = rnd(); }
+  const ZS1 = rnd(); const ZS2 = rnd();
+  const CMASK = new Array(64).fill(15);
+  CMASK[60] = 12; CMASK[63] = 14; CMASK[56] = 13; CMASK[4] = 3; CMASK[7] = 11; CMASK[0] = 7;
+  const KN = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
+  const KG = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+  const RD = [[-1, 0], [1, 0], [0, -1], [0, 1]]; const BD = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+
+  const START = (() => {
+    const a = new Array(64).fill(0); const back = [R, N, B, Q, K, B, N, R];
+    for (let c = 0; c < 8; c += 1) { a[c] = -back[c]; a[8 + c] = -P; a[48 + c] = P; a[56 + c] = back[c]; }
+    return { b: a, side: 1, castle: 15, ep: -1, half: 0 };
+  })();
+
+  function newState(pos) {
+    const S = { b: new Int8Array(64), side: pos.side, castle: pos.castle, ep: pos.ep, half: pos.half || 0, kp: [-1, -1], h1: 0, h2: 0, ev: 0, stack: [] };
+    for (let i = 0; i < 64; i += 1) {
+      const p = pos.b[i]; S.b[i] = p;
+      if (p) { S.h1 ^= Z1[p + 6][i]; S.h2 ^= Z2[p + 6][i]; S.ev += PVT[p + 6][i]; if (p === K) S.kp[0] = i; if (p === -K) S.kp[1] = i; }
+    }
+    S.h1 ^= ZC1[S.castle]; S.h2 ^= ZC2[S.castle];
+    if (S.ep >= 0) { S.h1 ^= ZE1[S.ep & 7]; S.h2 ^= ZE2[S.ep & 7]; }
+    if (S.side === -1) { S.h1 ^= ZS1; S.h2 ^= ZS2; }
+    return S;
+  }
+  const posOf = (S) => ({ b: Array.from(S.b), side: S.side, castle: S.castle, ep: S.ep, half: S.half });
+
+  function put(S, sq, p) { S.b[sq] = p; S.h1 ^= Z1[p + 6][sq]; S.h2 ^= Z2[p + 6][sq]; S.ev += PVT[p + 6][sq]; }
+  function rem(S, sq) { const p = S.b[sq]; S.b[sq] = 0; S.h1 ^= Z1[p + 6][sq]; S.h2 ^= Z2[p + 6][sq]; S.ev -= PVT[p + 6][sq]; return p; }
+
+  function make(S, m) {
+    const f = m & 63; const t = (m >> 6) & 63; const pr = (m >> 12) & 7; const fl = m >> 15;
+    const b = S.b; const p = b[f]; const s = S.side;
+    const rec = { cap: 0, castle: S.castle, ep: S.ep, half: S.half, h1: S.h1, h2: S.h2, ev: S.ev, k0: S.kp[0], k1: S.kp[1] };
+    S.h1 ^= ZC1[S.castle]; S.h2 ^= ZC2[S.castle];
+    if (S.ep >= 0) { S.h1 ^= ZE1[S.ep & 7]; S.h2 ^= ZE2[S.ep & 7]; }
+    if (fl & 2) rec.cap = rem(S, t + (s === 1 ? 8 : -8));
+    else if (b[t]) rec.cap = rem(S, t);
+    rem(S, f);
+    put(S, t, pr ? pr * s : p);
+    if (fl & 4) {
+      if (t === 62) { rem(S, 63); put(S, 61, R); } else if (t === 58) { rem(S, 56); put(S, 59, R); } else if (t === 6) { rem(S, 7); put(S, 5, -R); } else if (t === 2) { rem(S, 0); put(S, 3, -R); }
+    }
+    if (p === K) S.kp[0] = t; else if (p === -K) S.kp[1] = t;
+    S.castle &= CMASK[f] & CMASK[t];
+    S.ep = (fl & 8) ? (f + t) >> 1 : -1;
+    S.half = (Math.abs(p) === P || rec.cap) ? 0 : S.half + 1;
+    S.h1 ^= ZC1[S.castle]; S.h2 ^= ZC2[S.castle];
+    if (S.ep >= 0) { S.h1 ^= ZE1[S.ep & 7]; S.h2 ^= ZE2[S.ep & 7]; }
+    S.h1 ^= ZS1; S.h2 ^= ZS2;
+    S.side = -s;
+    S.stack.push(rec);
+    return rec.cap;
+  }
+  function unmake(S, m) {
+    const f = m & 63; const t = (m >> 6) & 63; const pr = (m >> 12) & 7; const fl = m >> 15;
+    const rec = S.stack.pop(); const s = -S.side; const b = S.b;
+    S.side = s;
+    b[f] = pr ? P * s : b[t]; b[t] = 0;
+    if (fl & 2) b[t + (s === 1 ? 8 : -8)] = rec.cap; else b[t] = rec.cap;
+    if (fl & 4) {
+      if (t === 62) { b[63] = R; b[61] = 0; } else if (t === 58) { b[56] = R; b[59] = 0; } else if (t === 6) { b[7] = -R; b[5] = 0; } else if (t === 2) { b[0] = -R; b[3] = 0; }
+    }
+    S.castle = rec.castle; S.ep = rec.ep; S.half = rec.half; S.h1 = rec.h1; S.h2 = rec.h2; S.ev = rec.ev; S.kp[0] = rec.k0; S.kp[1] = rec.k1;
+  }
+
+  // squares of side `by` that attack sq (pins ignored)
+  function attackers(b, sq, by, firstOnly) {
+    const out = []; const r = sq >> 3; const c = sq & 7;
+    const pr = r + (by === 1 ? 1 : -1);
+    if (pr >= 0 && pr < 8) {
+      if (c > 0 && b[pr * 8 + c - 1] === P * by) { out.push(pr * 8 + c - 1); if (firstOnly) return out; }
+      if (c < 7 && b[pr * 8 + c + 1] === P * by) { out.push(pr * 8 + c + 1); if (firstOnly) return out; }
+    }
+    for (const [dr, dc] of KN) {
+      const rr = r + dr; const cc = c + dc;
+      if (rr >= 0 && rr < 8 && cc >= 0 && cc < 8 && b[rr * 8 + cc] === N * by) { out.push(rr * 8 + cc); if (firstOnly) return out; }
+    }
+    for (const [dr, dc] of KG) {
+      const rr = r + dr; const cc = c + dc;
+      if (rr >= 0 && rr < 8 && cc >= 0 && cc < 8 && b[rr * 8 + cc] === K * by) { out.push(rr * 8 + cc); if (firstOnly) return out; }
+    }
+    for (let d = 0; d < 8; d += 1) {
+      const [dr, dc] = d < 4 ? RD[d] : BD[d - 4];
+      let rr = r + dr; let cc = c + dc;
+      while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) {
+        const q = b[rr * 8 + cc];
+        if (q) {
+          if (q === Q * by || q === (d < 4 ? R : B) * by) { out.push(rr * 8 + cc); if (firstOnly) return out; }
+          break;
+        }
+        rr += dr; cc += dc;
+      }
+    }
+    return out;
+  }
+  const attacked = (b, sq, by) => attackers(b, sq, by, true).length > 0;
+  const inCheck = (S, s) => attacked(S.b, S.kp[s === 1 ? 0 : 1], -s);
+
+  function gen(S, caps, out) {
+    const b = S.b; const s = S.side;
+    const push = (f, t, fl) => { out.push(f | (t << 6) | ((fl || 0) << 15)); };
+    const promos = (f, t) => { if (caps) out.push(f | (t << 6) | (Q << 12)); else [Q, R, B, N].forEach((pp) => out.push(f | (t << 6) | (pp << 12))); };
+    for (let f = 0; f < 64; f += 1) {
+      const p = b[f];
+      if (p * s <= 0) continue;
+      const t = p * s; const r = f >> 3; const c = f & 7;
+      if (t === P) {
+        const dir = s === 1 ? -1 : 1; const r1 = r + dir; const last = s === 1 ? 0 : 7;
+        if (r1 < 0 || r1 > 7) continue;
+        const to = r1 * 8 + c;
+        if (!b[to]) {
+          if (r1 === last) promos(f, to);
+          else if (!caps) {
+            push(f, to);
+            if (r === (s === 1 ? 6 : 1) && !b[to + dir * 8]) push(f, to + dir * 8, 8);
+          }
+        }
+        for (const dc of [-1, 1]) {
+          const cc = c + dc; if (cc < 0 || cc > 7) continue;
+          const tt = r1 * 8 + cc;
+          if (b[tt] * s < 0) { if (r1 === last) promos(f, tt); else push(f, tt); } else if (tt === S.ep) push(f, tt, 2);
+        }
+      } else if (t === N || t === K) {
+        for (const [dr, dc] of (t === N ? KN : KG)) {
+          const rr = r + dr; const cc = c + dc;
+          if (rr < 0 || rr > 7 || cc < 0 || cc > 7) continue;
+          const q = b[rr * 8 + cc];
+          if (q * s > 0 || (caps && !q)) continue;
+          push(f, rr * 8 + cc);
+        }
+        if (t === K && !caps) {
+          if (s === 1 && f === 60) {
+            if ((S.castle & 1) && !b[61] && !b[62] && b[63] === R && !attacked(b, 60, -1) && !attacked(b, 61, -1) && !attacked(b, 62, -1)) push(60, 62, 4);
+            if ((S.castle & 2) && !b[59] && !b[58] && !b[57] && b[56] === R && !attacked(b, 60, -1) && !attacked(b, 59, -1) && !attacked(b, 58, -1)) push(60, 58, 4);
+          } else if (s === -1 && f === 4) {
+            if ((S.castle & 4) && !b[5] && !b[6] && b[7] === -R && !attacked(b, 4, 1) && !attacked(b, 5, 1) && !attacked(b, 6, 1)) push(4, 6, 4);
+            if ((S.castle & 8) && !b[3] && !b[2] && !b[1] && b[0] === -R && !attacked(b, 4, 1) && !attacked(b, 3, 1) && !attacked(b, 2, 1)) push(4, 2, 4);
+          }
+        }
+      } else {
+        const dirs = t === R ? RD : t === B ? BD : RD.concat(BD);
+        for (const [dr, dc] of dirs) {
+          let rr = r + dr; let cc = c + dc;
+          while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) {
+            const q = b[rr * 8 + cc];
+            if (!q) { if (!caps) push(f, rr * 8 + cc); } else { if (q * s < 0) push(f, rr * 8 + cc); break; }
+            rr += dr; cc += dc;
+          }
+        }
+      }
+    }
+    return out;
+  }
+  function legalMoves(S) {
+    const res = [];
+    for (const m of gen(S, false, [])) { const s0 = S.side; make(S, m); if (!inCheck(S, s0)) res.push(m); unmake(S, m); }
+    return res;
+  }
+
+  // ---------------- search ----------------
+  let TT = new Map();
+  function search(S, opt) {
+    const t0 = Date.now(); const timeMs = opt.timeMs || 1000; const maxD = opt.maxDepth || 8;
+    const hist = new Set(opt.hist || []); const noise = opt.noise || 0; const path = [];
+    let nodes = 0; let stopped = false; let canStop = false; let rootBest = 0; let rootScore = -INF;
+    const killers = []; for (let i = 0; i < 128; i += 1) killers.push([0, 0]);
+    const histT = new Map();
+    if (TT.size > 600000) TT = new Map();
+    const evalS = () => { let e = S.ev * S.side + 10; if (noise) e += (((S.h1 ^ (S.h1 >>> 13)) & 255) / 255 - 0.5) * noise; return e; };
+    const timeUp = () => { if (canStop && (nodes & 1023) === 0 && Date.now() - t0 > timeMs) stopped = true; return stopped; };
+    const order = (moves, ttm, ply) => {
+      const b = S.b; const sc = [];
+      for (const m of moves) {
+        const t = (m >> 6) & 63; const q = b[t]; let s;
+        if (m === ttm) s = 1e8;
+        else if (q || (m >> 15) & 2) s = 1e7 + VALO[Math.abs(q) || 1] * 16 - VALO[Math.abs(b[m & 63])] / 10;
+        else if ((m >> 12) & 7) s = 9.5e6;
+        else if (killers[ply][0] === m) s = 9e6; else if (killers[ply][1] === m) s = 8e6;
+        else s = histT.get(m) || 0;
+        sc.push([s, m]);
+      }
+      sc.sort((x, y) => y[0] - x[0]);
+      return sc.map((x) => x[1]);
+    };
+    function qs(alpha, beta, ply) {
+      nodes += 1; if (timeUp()) return 0;
+      const stand = evalS();
+      if (stand >= beta) return stand;
+      if (stand > alpha) alpha = stand;
+      if (ply > 60) return stand;
+      for (const m of order(gen(S, true, []), 0, Math.min(ply, 127))) {
+        const s0 = S.side; make(S, m);
+        if (inCheck(S, s0)) { unmake(S, m); continue; }
+        const v = -qs(-beta, -alpha, ply + 1); unmake(S, m);
+        if (stopped) return 0;
+        if (v > alpha) { if (v >= beta) return v; alpha = v; }
+      }
+      return alpha;
+    }
+    function nm(depth, alpha, beta, ply) {
+      if (ply > 0 && (S.half >= 100 || hist.has(S.h1) || path.includes(S.h1))) return 0;
+      const chk = inCheck(S, S.side);
+      if (chk && ply < 24) depth += 1;
+      if (depth <= 0) return qs(alpha, beta, ply);
+      nodes += 1; if (timeUp()) return 0;
+      const a0 = alpha; const e = TT.get(S.h1); let ttm = 0;
+      if (e && e.h2 === S.h2) {
+        ttm = e.m;
+        if (ply > 0 && e.d >= depth) {
+          let v = e.v; if (v > MATE - 500) v -= ply; else if (v < -MATE + 500) v += ply;
+          if (e.f === 0 || (e.f === 1 && v >= beta) || (e.f === 2 && v <= alpha)) return v;
+        }
+      }
+      const kp = Math.min(ply, 127);
+      let best = -INF; let bm = 0; let legal = 0;
+      path.push(S.h1);
+      for (const m of order(gen(S, false, []), ttm, kp)) {
+        const s0 = S.side; const cap = S.b[(m >> 6) & 63]; make(S, m);
+        if (inCheck(S, s0)) { unmake(S, m); continue; }
+        legal += 1; let v;
+        if (legal === 1) v = -nm(depth - 1, -beta, -alpha, ply + 1);
+        else { v = -nm(depth - 1, -alpha - 1, -alpha, ply + 1); if (!stopped && v > alpha && v < beta) v = -nm(depth - 1, -beta, -alpha, ply + 1); }
+        unmake(S, m);
+        if (stopped) { path.pop(); return 0; }
+        if (v > best) { best = v; bm = m; if (ply === 0) { rootBest = m; rootScore = v; } }
+        if (v > alpha) {
+          alpha = v;
+          if (v >= beta) {
+            if (!cap) { if (killers[kp][0] !== m) { killers[kp][1] = killers[kp][0]; killers[kp][0] = m; } histT.set(m, (histT.get(m) || 0) + depth * depth); }
+            break;
+          }
+        }
+      }
+      path.pop();
+      if (legal === 0) return chk ? -MATE + ply : 0;
+      let sv = best; if (sv > MATE - 500) sv += ply; else if (sv < -MATE + 500) sv -= ply;
+      TT.set(S.h1, { h2: S.h2, d: depth, v: sv, f: best <= a0 ? 2 : (best >= beta ? 1 : 0), m: bm });
+      return best;
+    }
+    let best = 0; let bestScore = 0; let depthDone = 0;
+    for (let d = 1; d <= maxD; d += 1) {
+      canStop = d > 1; rootBest = 0; rootScore = -INF;
+      const v = nm(d, -INF, INF, 0);
+      if (stopped) { if (rootBest) { best = rootBest; bestScore = rootScore; } break; }
+      best = rootBest; bestScore = v; depthDone = d;
+      if (!best || Math.abs(v) > MATE - 100) break;
+      if (Date.now() - t0 > timeMs * 0.5) break;
+    }
+    if (!best) bestScore = inCheck(S, S.side) ? -MATE : 0;
+    const pv = [];
+    if (best) {
+      let m = best; let k = 0;
+      for (; k < 8 && m; k += 1) {
+        if (!legalMoves(S).includes(m)) break;
+        pv.push(m); make(S, m);
+        const e = TT.get(S.h1); m = e && e.h2 === S.h2 ? e.m : 0;
+      }
+      for (let i = pv.length - 1; i >= 0; i -= 1) unmake(S, pv[i]);
+    }
+    return { move: best, score: bestScore, depth: depthDone, pv, nodes, ms: Date.now() - t0 };
+  }
+
+  // ---------------- notation & helpers ----------------
+  const FILES = 'abcdefgh';
+  const sqName = (sq) => FILES[sq & 7] + (8 - (sq >> 3));
+  const LETTER = ['', '', 'N', 'B', 'R', 'Q', 'K'];
+  function san(pos, m) {
+    const S = newState(pos); const f = m & 63; const t = (m >> 6) & 63; const pr = (m >> 12) & 7; const fl = m >> 15;
+    const p = Math.abs(S.b[f]); let s;
+    if (fl & 4) s = (t & 7) === 6 ? 'O-O' : 'O-O-O';
+    else {
+      const cap = S.b[t] || (fl & 2);
+      if (p === P) s = (cap ? `${FILES[f & 7]}x` : '') + sqName(t) + (pr ? `=${LETTER[pr]}` : '');
+      else {
+        const others = legalMoves(S).filter((x) => x !== m && ((x >> 6) & 63) === t && Math.abs(S.b[x & 63]) === p);
+        let dis = '';
+        if (others.length) {
+          const sameFile = others.some((x) => ((x & 63) & 7) === (f & 7)); const sameRank = others.some((x) => ((x & 63) >> 3) === (f >> 3));
+          if (!sameFile) dis = FILES[f & 7]; else if (!sameRank) dis = String(8 - (f >> 3)); else dis = sqName(f);
+        }
+        s = LETTER[p] + dis + (cap ? 'x' : '') + sqName(t);
+      }
+    }
+    const s0 = S.side; make(S, m);
+    if (inCheck(S, -s0)) s += legalMoves(S).length ? '+' : '#';
+    return s;
+  }
+
+  function handle(msg) {
+    const S = newState(msg.pos);
+    if (msg.cmd === 'search') return search(S, msg.opts || {});
+    if (msg.cmd === 'analyze') {
+      const hist = msg.hist || [];
+      const pre = search(S, { timeMs: msg.timeMs || 700, maxDepth: 10, hist });
+      const preHash = S.h1;
+      make(S, msg.move);
+      let post;
+      if (!legalMoves(S).length) post = { move: 0, score: inCheck(S, S.side) ? -MATE : 0, depth: 0, pv: [] };
+      else post = search(S, { timeMs: (msg.timeMs || 700) * 2, maxDepth: Math.max(1, pre.depth - 1), hist: hist.concat([preHash]) });
+      return { best: pre.move, bestScore: pre.score, bestPv: pre.pv, depth: pre.depth, userScore: -post.score, reply: post.move, replyPv: post.pv };
+    }
+    if (msg.cmd === 'threat') {
+      if (inCheck(S, S.side)) return { inCheck: true };
+      const pos = posOf(S); pos.side = -pos.side; pos.ep = -1;
+      const S2 = newState(pos); const base = S2.ev * S2.side;
+      const r = search(S2, { timeMs: msg.timeMs || 450, maxDepth: 4, hist: [] });
+      return { move: r.move, score: r.score, base, pv: r.pv };
+    }
+    return null;
+  }
+
+  if (isWorker) {
+    self.onmessage = (e) => {
+      let res = null;
+      try { res = handle(e.data); } catch (err) { res = { error: String(err) }; }
+      self.postMessage({ id: e.data.id, res });
+    };
+  }
+  return {
+    P, N, B, R, Q, K, VAL, MATE, START, newState, posOf, make, unmake, inCheck, gen, legalMoves, search, handle, attackers, san, sqName,
+  };
+}
+// ===================== ENGINE-END =====================
+</script>
+
+<script>
+(() => {
+  const E = ENGINE(false);
+  const { P, N, B, R, Q, K, MATE } = E;
+  const $ = (s) => document.querySelector(s);
+  const NAMES = ['', '兵', '騎士', '主教', '城堡', '皇后', '國王'];
+  const pname = (p) => NAMES[Math.abs(p)];
+  const GLYPH = ['', '♟', '♞', '♝', '♜', '♛', '♚'];
+
+  // ---------- worker ----------
+  let worker = null;
+  try { worker = new Worker(URL.createObjectURL(new Blob([`(${ENGINE.toString()})(true);`], { type: 'text/javascript' }))); } catch (e) { worker = null; }
+  let reqId = 0; const pending = new Map();
+  if (worker) {
+    worker.onmessage = (e) => { const job = pending.get(e.data.id); pending.delete(e.data.id); if (job) job[0](e.data.res); };
+    worker.onerror = () => { worker = null; const jobs = [...pending.values()]; pending.clear(); jobs.forEach(([cb, msg]) => setTimeout(() => cb(E.handle(msg)), 20)); };
+  }
+  function ask(cmd, payload) {
+    return new Promise((resolve) => {
+      const msg = { cmd, ...payload };
+      if (!worker) { setTimeout(() => resolve(E.handle(msg)), 20); return; }
+      reqId += 1; msg.id = reqId; pending.set(reqId, [resolve, msg]); worker.postMessage(msg);
+    });
+  }
+  const LEVELS = { easy: { maxDepth: 2, timeMs: 400, noise: 120 }, medium: { maxDepth: 6, timeMs: 900 }, hard: { maxDepth: 16, timeMs: 2500 } };
+
+  // ---------- state ----------
+  const G = {};
+  const coachOn = () => $('#selCoach').value !== 'off';
+  const pos = () => E.posOf(G.S);
+  const histBefore = () => G.h1s.slice(0, -1);
+  const sideName = (s) => (s === 1 ? '白方' : '黑方');
+  const youOr = (s) => (s === G.me ? '你' : '對方');
+
+  function label(p, m, sanText) {
+    const f = m & 63; const t = (m >> 6) & 63; const fl = m >> 15;
+    if (fl & 4) return `${(t & 7) === 6 ? '短' : '長'}易位 <span class="san">${sanText}</span>`;
+    return `${pname(p)} ${E.sqName(f)}→${E.sqName(t)} <span class="san">${sanText}</span>`;
+  }
+  function mvLabel(position, m) { return label(position.b[m & 63], m, E.san(position, m)); }
+
+  function newGame() {
+    G.me = Number($('#selColor').value);
+    G.S = E.newState(E.START); G.moves = []; G.h1s = [G.S.h1]; G.keys = [`${G.S.h1}:${G.S.h2}`];
+    G.gen = (G.gen || 0) + 1; G.over = null; G.busy = false; G.awaiting = false;
+    G.selected = -1; G.targets = []; G.last = 0; G.arrow = null; G.marks = []; G.hintData = null; G.lastAnalysis = null; G.anchor = null;
+    $('#feed').innerHTML = '';
+    addMsg('coach', `你執<b>${sideName(G.me)}</b>${G.me === 1 ? '，先走' : '，電腦先走'}。點自己的棋子，再點藍點就能走（兵走到底線會自動升變成皇后）。<br>
+      <b>標準模式</b>：輪到你時，我會直接告訴你<b>建議走哪一步</b>（<b style="color:var(--good)">綠色箭頭</b>）和原因；電腦每走一步，我會說明<b>它想做什麼、你要小心什麼</b>。不想要提醒，到「設定」改成正常模式。`);
+    resize(); setStatus(); save();
+    if (G.S.side !== G.me) aiTurn(); else if (coachOn() && !restoring) setTimeout(() => turnCard(G.gen, null), 50);
+  }
+
+  function setStatus(t) {
+    const el = $('#status');
+    if (t) { el.textContent = t; return; }
+    if (G.over) { el.textContent = '對局結束'; return; }
+    el.textContent = G.S.side === G.me ? `輪到你了（${sideName(G.me)}）` : '電腦思考中…';
+  }
+
+  function addMsg(type, html, actions) {
+    const feed = $('#feed'); const d = document.createElement('div');
+    d.className = `msg ${type}`;
+    const who = { turn: '教練', coach: '教練', good: '教練', warn: '教練', bad: '教練', user: '你', me: '你問' }[type] || '';
+    d.innerHTML = (who ? `<span class="who">${who}</span>` : '') + html;
+    if (actions && actions.length) {
+      const box = document.createElement('div'); box.className = 'acts';
+      actions.forEach(([t, fn, cls]) => {
+        const bt = document.createElement('button'); bt.textContent = t; if (cls) bt.className = cls;
+        bt.onclick = () => { box.querySelectorAll('button').forEach((x) => { x.disabled = true; }); fn(); };
+        box.appendChild(bt);
+      });
+      d.appendChild(box);
+    }
+    feed.appendChild(d);
+    if (type === 'user' || type === 'me' || type === 'turn') G.anchor = d;
+    const anchor = G.anchor && G.anchor.isConnected ? G.anchor : d;
+    feed.scrollTop = Math.min(feed.scrollHeight - feed.clientHeight, Math.max(0, anchor.offsetTop - 6));
+    save();
+    return d;
+  }
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // ---------- analysis helpers ----------
+  function hanging(b, s) {
+    const out = [];
+    for (let sq = 0; sq < 64; sq += 1) {
+      const p = b[sq];
+      if (p * s <= 0 || Math.abs(p) === K) continue;
+      const atk = E.attackers(b, sq, -s);
+      if (!atk.length) continue;
+      const def = E.attackers(b, sq, s);
+      const minAtk = Math.min(...atk.map((x) => E.VAL[Math.abs(b[x])] || 1000));
+      if (!def.length || minAtk < E.VAL[Math.abs(p)]) out.push({ sq, atk, def, val: E.VAL[Math.abs(p)] });
+    }
+    return out.sort((x, y) => y.val - x.val);
+  }
+  const names = (b, sqs) => [...new Set(sqs.map((s) => pname(b[s])))].join('、');
+  function afterPos(position, m) { const S = E.newState(position); E.make(S, m); return E.posOf(S); }
+
+  function moveReason(position, m, mover) {
+    const b = position.b; const f = m & 63; const t = (m >> 6) & 63; const pr = (m >> 12) & 7; const fl = m >> 15;
+    const p = b[f]; const ty = Math.abs(p); const enemy = youOr(-mover); const reasons = [];
+    const ap = afterPos(position, m); const a = ap.b;
+    const S2 = E.newState(ap);
+    if (E.inCheck(E.newState(position), mover)) {
+      const checkers = E.attackers(b, b.indexOf(K * mover), -mover);
+      reasons.push(ty === K ? '移動國王，躲開將軍' : checkers.includes(t) ? '吃掉正在將軍的棋子，解除將軍' : '擋住將軍的路線，解除將軍');
+    }
+    if (fl & 4) reasons.push('王車易位：把國王藏到安全的角落，同時讓城堡出動');
+    const cap = (fl & 2) ? P : b[t];
+    if (cap) reasons.push(`吃掉${enemy}的${pname(cap)}`);
+    if (pr) reasons.push('兵走到底線，升變成皇后');
+    if (E.inCheck(S2, -mover)) reasons.push(E.legalMoves(S2).length ? '將軍' : '將死對方，贏了！');
+    const hb = hanging(b, mover); const ha = hanging(a, mover);
+    if (hb.some((h) => h.sq === f) && !ha.some((h) => h.sq === t)) reasons.push(`把受到威脅的${pname(p)}移到安全的位置`);
+    const saved = hb.filter((h) => h.sq !== f && a[h.sq] === b[h.sq] && !ha.some((x) => x.sq === h.sq));
+    if (saved.length) reasons.push(`保護了原本有危險的${names(b, saved.map((h) => h.sq))}`);
+    const targets = [];
+    for (let sq = 0; sq < 64; sq += 1) if (a[sq] * mover < 0 && E.attackers(a, sq, mover).includes(t) && (Math.abs(a[sq]) === K || E.VAL[Math.abs(a[sq])] >= 300)) targets.push(sq);
+    if (targets.length >= 2) reasons.push(`同時攻擊${enemy}的${targets.map((s) => pname(a[s])).join('和')}（雙重攻擊）`);
+    else {
+      const eb = hanging(b, -mover).map((h) => h.sq);
+      const ea = hanging(a, -mover).filter((h) => !eb.includes(h.sq) && h.atk.includes(t));
+      if (ea.length) reasons.push(`攻擊${enemy}的${names(a, ea.map((h) => h.sq))}`);
+    }
+    if (!reasons.length) {
+      const home = mover === 1 ? 7 : 0;
+      if ((ty === N || ty === B) && (f >> 3) === home) reasons.push(`出動${pname(p)}，控制中央、準備易位`);
+      else if (ty === P && [27, 28, 35, 36].includes(t)) reasons.push('用兵佔據中央');
+      else if (ty === R) reasons.push('讓城堡佔據更通暢的直線');
+      else if (ty === Q) reasons.push('調動皇后，加強攻擊或防守');
+      else reasons.push('改善棋子的位置，為下一步作準備');
+    }
+    return reasons.join('，');
+  }
+  function pvText(position, pv, max = 4) {
+    const out = []; let ps = position;
+    for (let i = 0; i < Math.min(pv.length, max); i += 1) { out.push(E.san(ps, pv[i])); ps = afterPos(ps, pv[i]); }
+    return out.join(' → ');
+  }
+  function scoreText(v) {
+    if (v > MATE - 300) return `你已經有殺棋了（約 ${Math.ceil((MATE - v) / 2)} 步內）！`;
+    if (v < -MATE + 300) return `危險！對方有殺棋（約 ${Math.ceil((MATE + v) / 2)} 步內）。`;
+    const x = v / 100; const a = Math.abs(x);
+    const eq = a >= 8 ? '（約一個皇后）' : a >= 4.5 ? '（約一個城堡）' : a >= 2.8 ? '（約一個騎士或主教）' : '';
+    if (a < 0.4) return '雙方大致均勢。';
+    if (a < 1.2) return x > 0 ? '你稍微佔優。' : '對方稍微佔優。';
+    return x > 0 ? `你領先約 ${a.toFixed(1)} 個兵的價值${eq}。` : `你落後約 ${a.toFixed(1)} 個兵的價值${eq}。`;
+  }
+
+  // ---------- drawing ----------
+  const cv = $('#board'); const ctx = cv.getContext('2d');
+  let cell = 60; let m0 = 20; let anim = null;
+  const flip = () => G.me === -1;
+  const sqXY = (sq) => { let r = sq >> 3; let c = sq & 7; if (flip()) { r = 7 - r; c = 7 - c; } return [m0 + c * cell + cell / 2, m0 + r * cell + cell / 2]; };
+  function resize() {
+    const wrap = $('#boardWrap'); const narrow = window.innerWidth <= 980;
+    const w = wrap.clientWidth || window.innerWidth; const h = narrow ? window.innerHeight * 0.5 : window.innerHeight - 24;
+    const size = Math.floor(Math.min(w, h)); m0 = Math.round(size * 0.04); cell = Math.floor((size - 2 * m0) / 8);
+    const S = cell * 8 + 2 * m0; const dpr = window.devicePixelRatio || 1;
+    cv.width = S * dpr; cv.height = S * dpr; cv.style.width = `${S}px`; cv.style.height = `${S}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); draw();
+  }
+  function drawPiece(p, x, y) {
+    ctx.font = `${cell * 0.78}px "Noto Sans Symbols 2", "Segoe UI Symbol", "DejaVu Sans", sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const g = `${GLYPH[Math.abs(p)]}︎`;
+    ctx.lineJoin = 'round';
+    if (p > 0) { ctx.lineWidth = cell * 0.07; ctx.strokeStyle = '#1b1b1b'; ctx.strokeText(g, x, y + cell * 0.03); ctx.fillStyle = '#fbfaf6'; ctx.fillText(g, x, y + cell * 0.03); }
+    else { ctx.lineWidth = cell * 0.05; ctx.strokeStyle = '#f4efe4'; ctx.strokeText(g, x, y + cell * 0.03); ctx.fillStyle = '#161616'; ctx.fillText(g, x, y + cell * 0.03); }
+  }
+  function arrow(m, color) {
+    const [x1, y1] = sqXY(m & 63); const [x2, y2] = sqXY((m >> 6) & 63);
+    const ang = Math.atan2(y2 - y1, x2 - x1); const len = Math.hypot(x2 - x1, y2 - y1);
+    ctx.save(); ctx.translate(x1, y1); ctx.rotate(ang); ctx.fillStyle = color; ctx.strokeStyle = color;
+    ctx.lineWidth = cell * 0.16; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cell * 0.1, 0); ctx.lineTo(len - cell * 0.35, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(len - cell * 0.05, 0); ctx.lineTo(len - cell * 0.45, -cell * 0.26); ctx.lineTo(len - cell * 0.45, cell * 0.26); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  function draw() {
+    if (!G.S) return;
+    const S = cell * 8 + 2 * m0;
+    ctx.fillStyle = '#5a3d26'; ctx.fillRect(0, 0, S, S);
+    for (let sq = 0; sq < 64; sq += 1) {
+      const r = sq >> 3; const c = sq & 7; const [x, y] = sqXY(sq);
+      ctx.fillStyle = (r + c) % 2 ? '#b58863' : '#f0d9b5';
+      if (G.last && (sq === (G.last & 63) || sq === ((G.last >> 6) & 63))) ctx.fillStyle = (r + c) % 2 ? '#aaa23a' : '#cdd26a';
+      ctx.fillRect(x - cell / 2, y - cell / 2, cell, cell);
+    }
+    // coordinates
+    ctx.font = `${Math.max(9, m0 * 0.7)}px sans-serif`; ctx.fillStyle = '#f0d9b5'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let i = 0; i < 8; i += 1) {
+      const c = flip() ? 7 - i : i; const r = flip() ? i + 1 : 8 - i;
+      ctx.fillText('abcdefgh'[c], m0 + i * cell + cell / 2, S - m0 / 2);
+      ctx.fillText(String(r), m0 / 2, m0 + i * cell + cell / 2);
+    }
+    const b = G.S.b;
+    G.marks.forEach((sq) => { const [x, y] = sqXY(sq); ctx.save(); ctx.setLineDash([5, 4]); ctx.strokeStyle = '#e0571f'; ctx.lineWidth = 3; ctx.strokeRect(x - cell / 2 + 3, y - cell / 2 + 3, cell - 6, cell - 6); ctx.restore(); });
+    if (G.selected >= 0) { const [x, y] = sqXY(G.selected); ctx.fillStyle = 'rgba(47,125,209,.35)'; ctx.fillRect(x - cell / 2, y - cell / 2, cell, cell); }
+    const kSq = G.S.kp[G.S.side === 1 ? 0 : 1];
+    if (E.inCheck(G.S, G.S.side)) { const [x, y] = sqXY(kSq); const g = ctx.createRadialGradient(x, y, cell * 0.1, x, y, cell * 0.6); g.addColorStop(0, 'rgba(230,40,30,.9)'); g.addColorStop(1, 'rgba(230,40,30,0)'); ctx.fillStyle = g; ctx.fillRect(x - cell / 2, y - cell / 2, cell, cell); }
+    for (let sq = 0; sq < 64; sq += 1) { if (b[sq] && !(anim && sq === anim.f)) { const [x, y] = sqXY(sq); drawPiece(b[sq], x, y); } }
+    G.targets.forEach((t) => {
+      const [x, y] = sqXY(t); ctx.fillStyle = 'rgba(47,125,209,.55)';
+      if (b[t]) { ctx.lineWidth = cell * 0.08; ctx.strokeStyle = 'rgba(47,125,209,.7)'; ctx.beginPath(); ctx.arc(x, y, cell * 0.44, 0, Math.PI * 2); ctx.stroke(); } else { ctx.beginPath(); ctx.arc(x, y, cell * 0.15, 0, Math.PI * 2); ctx.fill(); }
+    });
+    if (G.arrow) arrow(G.arrow.m, G.arrow.color);
+    if (anim) {
+      const k = Math.min(1, (performance.now() - anim.t0) / anim.dur); const e = 1 - (1 - k) * (1 - k);
+      const [x1, y1] = sqXY(anim.f); const [x2, y2] = sqXY(anim.t); drawPiece(anim.p, x1 + (x2 - x1) * e, y1 + (y2 - y1) * e);
+    }
+  }
+  function animateAndApply(m) {
+    return new Promise((resolve) => {
+      anim = { f: m & 63, t: (m >> 6) & 63, p: G.S.b[m & 63], t0: performance.now(), dur: 200 };
+      G.arrow = null; G.targets = []; G.selected = -1; G.marks = [];
+      const step = () => { draw(); if (performance.now() - anim.t0 < anim.dur) { requestAnimationFrame(step); return; } anim = null; resolve(applyMove(m)); draw(); };
+      requestAnimationFrame(step);
+    });
+  }
+  function applyMove(m) {
+    const before = pos(); const sanText = E.san(before, m); const mover = G.S.side; const p = before.b[m & 63];
+    const cap = E.make(G.S, m);
+    G.moves.push({ m, san: sanText, side: mover });
+    G.h1s.push(G.S.h1); G.keys.push(`${G.S.h1}:${G.S.h2}`); G.last = m; G.hintData = null;
+    checkOver(); setStatus(); save();
+    return { before, sanText, cap, mover, label: label(p, m, sanText) };
+  }
+  function insufficient(b) {
+    const pcs = b.filter((p) => p && Math.abs(p) !== K);
+    return !pcs.length || (pcs.length === 1 && [N, B].includes(Math.abs(pcs[0])));
+  }
+  function checkOver() {
+    const lm = E.legalMoves(G.S);
+    if (!lm.length) {
+      if (E.inCheck(G.S, G.S.side)) { G.over = G.S.side === G.me ? 'lose' : 'win'; G.overReason = '將死'; } else { G.over = 'draw'; G.overReason = '逼和（無子可動又沒被將軍）'; }
+      return;
+    }
+    const k = G.keys[G.keys.length - 1];
+    if (G.keys.filter((x) => x === k).length >= 3) { G.over = 'draw'; G.overReason = '同一局面重複三次'; return; }
+    if (G.S.half >= 100) { G.over = 'draw'; G.overReason = '50 步沒有吃子或走兵'; return; }
+    if (insufficient(Array.from(G.S.b))) { G.over = 'draw'; G.overReason = '雙方都沒有足夠的子力將死對方'; }
+  }
+  function announceOver() {
+    if (G.over === 'win') addMsg('good', `🎉 恭喜你贏了！（${G.overReason}）按「新局」再來一盤。`);
+    else if (G.over === 'lose') addMsg('bad', `這盤輸了（${G.overReason}）。按「悔棋」退回幾步，我陪你找更好的下法。`);
+    else addMsg('coach', `和棋（${G.overReason}）。`);
+    setStatus();
+  }
+  function rebuild(k) {
+    const keep = G.moves.slice(0, k);
+    G.S = E.newState(E.START); G.moves = []; G.h1s = [G.S.h1]; G.keys = [`${G.S.h1}:${G.S.h2}`]; G.over = null; G.last = 0;
+    keep.forEach((mv) => {
+      const before = pos(); E.make(G.S, mv.m);
+      G.moves.push({ m: mv.m, san: mv.san || E.san(before, mv.m), side: before.side });
+      G.h1s.push(G.S.h1); G.keys.push(`${G.S.h1}:${G.S.h2}`); G.last = mv.m;
+    });
+    G.selected = -1; G.targets = []; G.arrow = null; G.marks = []; G.hintData = null; G.awaiting = false;
+    setStatus(); draw(); save();
+  }
+
+  // ---------- turn flow ----------
+  const canAct = () => !G.busy && !G.over && !G.awaiting && G.S.side === G.me;
+
+  async function userMove(m) {
+    const myGen = G.gen; G.busy = true;
+    const before = pos(); const hist = histBefore();
+    const r = await animateAndApply(m);
+    addMsg('user', `你走 <b>${r.label}</b>${r.cap ? `，吃掉對方的${pname(r.cap)}` : ''}。`);
+    if (G.over) { G.busy = false; announceOver(); return; }
+    if (coachOn()) {
+      setStatus('教練正在看你這步…');
+      const a = await ask('analyze', { pos: before, move: m, hist, timeMs: 700 });
+      if (myGen !== G.gen) return;
+      const fb = feedback(before, m, a);
+      G.lastAnalysis = { ...a, before, m, fb };
+      if (fb.sev >= 2 && $('#optPause').checked) {
+        G.busy = false; G.awaiting = true;
+        if (a.reply) { G.arrow = { m: a.reply, color: 'rgba(200,60,40,.85)' }; draw(); }
+        addMsg(fb.type, `${fb.html}<br><span class="muted">（紅色箭頭是對方可能的回應）要不要悔棋重新想一步？</span>`, [
+          ['悔棋重下', () => { G.awaiting = false; undo(); }, 'primary'],
+          ['照走，繼續', () => { if (myGen === G.gen) { G.awaiting = false; G.arrow = null; aiTurn(); } }],
+        ]);
+        setStatus('要悔棋重下，還是照走？');
+        return;
+      }
+      addMsg(fb.type, fb.html);
+    }
+    await aiTurn();
+  }
+
+  function feedback(before, m, a) {
+    let loss = a.best === m ? 0 : Math.max(0, a.bestScore - a.userScore);
+    const mated = a.userScore < -MATE + 300; const bestMated = a.bestScore < -MATE + 300;
+    let sev = loss <= 40 ? 0 : loss <= 120 ? 1 : loss <= 300 ? 2 : 3;
+    if (mated && !bestMated) sev = 3;
+    if (bestMated) { sev = 0; loss = 0; }
+    const best = a.best ? `<b>${mvLabel(before, a.best)}</b>` : '';
+    const bestWhy = a.best ? moveReason(before, a.best, G.me) : '';
+    const after = afterPos(before, m);
+    let reply = '';
+    if (a.reply) {
+      const rp = after.b[a.reply & 63]; const q = after.b[(a.reply >> 6) & 63];
+      reply = `你走完之後，對方可以走 <b>${label(rp, a.reply, E.san(after, a.reply))}</b>${q ? `，吃掉你的${pname(q)}` : ''}${mated ? '，形成殺棋' : ''}。`;
+    }
+    if (bestMated) return { sev: 0, type: 'warn', html: '局面已經很危險了，對方有殺棋。盡量撐住，下一盤早點注意國王的安全。', loss };
+    if (sev === 0) return { sev, type: 'good', html: `👍 好棋！${a.best === m ? '這正是教練也會選的著法' : '這步和最佳著法差不多好'}——${moveReason(before, m, G.me)}。`, loss };
+    if (sev === 1) return { sev, type: 'coach', html: `🙂 這步還可以，但更好的是 ${best}：${bestWhy}。`, loss };
+    let lesson = '試著站在對方的角度想：「如果我是對方，下一步最想走什麼？」';
+    const t = (m >> 6) & 63;
+    if (mated) lesson = '走之前先檢查國王的安全：對方有沒有可以將軍的手段？';
+    else if (a.reply && ((a.reply >> 6) & 63) === t) lesson = '走到這格之前，先問自己：「對方能不能吃到這裡？我有沒有保護？」';
+    else if (a.reply && after.b[(a.reply >> 6) & 63]) lesson = '這步讓別的子陷入危險。每一步之前，先掃一遍自己哪些子正被攻擊、有沒有保護。';
+    return {
+      sev, type: sev === 2 ? 'warn' : 'bad', loss,
+      html: `${sev === 2 ? '⚠️ 這步不太好' : '❌ 這是失誤'}（${mated ? '可能被將死' : `大約吃虧 ${(loss / 100).toFixed(1)} 個兵的價值`}）。${reply}<br>比較好的是 ${best}：${bestWhy}。<br>💭 ${lesson}`,
+    };
+  }
+
+  async function aiTurn() {
+    const myGen = G.gen;
+    if (G.over) return;
+    G.busy = true; setStatus('電腦思考中…');
+    const lv = LEVELS[$('#selLevel').value] || LEVELS.medium;
+    const res = await ask('search', { pos: pos(), opts: { ...lv, hist: histBefore() } });
+    if (myGen !== G.gen) return;
+    if (!res || !res.move) { G.busy = false; checkOver(); announceOver(); return; }
+    const r = await animateAndApply(res.move);
+    const ai = { m: res.move, before: r.before, label: r.label };
+    if (G.over) { addMsg('coach', `電腦走 <b>${r.label}</b>。`); G.busy = false; announceOver(); return; }
+    if (coachOn()) { await turnCard(myGen, ai); return; }
+    addMsg('coach', `電腦走 <b>${r.label}</b>${E.inCheck(G.S, G.me) ? '，<b style="color:var(--bad)">將軍！</b>' : ''}。`);
+    G.busy = false; G.anchor = null; setStatus(); draw();
+  }
+
+  async function threatInfo() {
+    if (E.inCheck(G.S, G.me)) return { inCheck: true };
+    const t = await ask('threat', { pos: pos(), timeMs: 450 });
+    if (!t || !t.move) return null;
+    if (t.score > MATE - 300 || t.score - t.base > 150) {
+      const p0 = pos(); p0.side = -p0.side; p0.ep = -1;
+      const q = p0.b[(t.move >> 6) & 63];
+      const desc = t.score > MATE - 300 ? '直接將死你' : q ? `吃掉你的${pname(q)}` : '取得明顯優勢';
+      return { move: t.move, desc, label: label(p0.b[t.move & 63], t.move, E.san(p0, t.move)), target: q ? (t.move >> 6) & 63 : -1 };
+    }
+    return null;
+  }
+
+  async function getHint() {
+    if (G.hintData) return G.hintData;
+    const r = await ask('search', { pos: pos(), opts: { timeMs: 1200, maxDepth: 16, hist: histBefore() } });
+    G.hintData = r; return r;
+  }
+
+  // One card per turn: what the computer did, what to watch out for, and the move to play.
+  async function turnCard(myGen, ai) {
+    if (G.over || G.S.side !== G.me || myGen !== G.gen) return;
+    G.busy = true; setStatus('教練正在幫你看下一步…');
+    const now = pos(); const b = now.b;
+    const hang = hanging(b, G.me);
+    const th = await threatInfo(); if (myGen !== G.gen) return;
+    const r = await getHint(); if (myGen !== G.gen) return;
+    const parts = [];
+    if (ai) {
+      const chk = E.inCheck(G.S, G.me);
+      parts.push(`<div class="sec"><div class="h">電腦走了 ${ai.label}${chk ? '　<span style="color:var(--bad)">將軍！</span>' : ''}</div>它的用意：${moveReason(ai.before, ai.m, -G.me)}。</div>`);
+    }
+    const warn = [];
+    if (th && th.inCheck) warn.push('你被將軍了，這步一定要先解將：吃掉攻擊的子、擋住，或移動國王。');
+    hang.slice(0, 3).forEach((h) => warn.push(`你的<b>${pname(b[h.sq])}</b>（${E.sqName(h.sq)}）正被對方的${names(b, h.atk)}攻擊${h.def.length ? '，被換掉會吃虧' : '，而且<b>沒有保護</b>'}。`));
+    if (th && !th.inCheck) warn.push(`對方下一步想走 <b>${th.label}</b>，${th.desc}。`);
+    if (warn.length) parts.push(`<div class="sec caution"><div class="h">⚠️ 要小心</div><ul>${warn.map((w) => `<li>${w}</li>`).join('')}</ul></div>`);
+    if (r && r.move) {
+      const why = moveReason(now, r.move, G.me);
+      const handles = /安全|保護|吃掉|將|易位/.test(why) || (th && th.inCheck);
+      const note = warn.length && !handles ? '<div class="muted">這步沒有直接處理上面的威脅：教練算過，先走這步比較重要，對方就算吃了你也不會吃虧。</div>' : '';
+      const pv = r.pv && r.pv.length > 1 ? pvText(afterPos(now, r.move), r.pv.slice(1), 4) : '';
+      parts.push(`<div class="sec sug"><div class="h">👉 建議你走</div><div class="big">${mvLabel(now, r.move)}</div><div>為什麼：${why}。</div>${note}${pv ? `<div class="muted">之後可能：${pv}</div>` : ''}<div class="muted">局勢：${scoreText(r.score)}</div></div>`);
+      G.arrow = { m: r.move, color: 'rgba(40,140,80,.85)' };
+    }
+    G.marks = hang.map((h) => h.sq); if (th && th.target >= 0 && !G.marks.includes(th.target)) G.marks.push(th.target);
+    addMsg('turn', parts.join(''));
+    G.busy = false; G.anchor = null; setStatus('輪到你了：綠色箭頭是建議'); draw();
+  }
+
+  function undo() {
+    if (G.busy || !G.moves.length) return;
+    G.gen += 1;
+    let k = G.moves.length - 1;
+    while (k >= 0 && G.moves[k].side !== G.me) k -= 1;
+    if (k < 0) return;
+    rebuild(k);
+    addMsg('coach', '↩️ 已悔棋，回到你走棋之前。');
+    if (G.S.side !== G.me) aiTurn(); else if (coachOn()) turnCard(G.gen, null);
+  }
+
+  // ---------- Q&A ----------
+  const TERMS = [
+    [/兵|卒|pawn/i, '<b>兵</b>：只能往前走一格，第一次可以走兩格；吃子要<b>斜前方</b>吃。走到底線會升變（通常變成皇后）。還有特殊的「吃過路兵」。'],
+    [/騎士|馬|knight/i, '<b>騎士</b>：走「L」形（直兩格再橫一格），是唯一可以<b>跳過其他棋子</b>的棋子，很適合做雙重攻擊。'],
+    [/主教|象|bishop/i, '<b>主教</b>：斜線任意走，不能越子。每個主教永遠只走同一種顏色的格子。'],
+    [/城堡|車|rook/i, '<b>城堡（車）</b>：直線、橫線任意走，不能越子。開放的直線最能發揮它的力量。'],
+    [/皇后|后|queen/i, '<b>皇后</b>：直線、橫線、斜線都能任意走，是最強的棋子（約 9 個兵的價值）。開局太早出動皇后容易被追著打。'],
+    [/國王|王|king/i, '<b>國王</b>：每次往任何方向走一格。國王被將死就輸了，所以開局要早點「王車易位」保護它。'],
+    [/易位|castl/i, '<b>王車易位</b>：國王往城堡方向走兩格，城堡跳到國王另一側。條件：兩者都沒動過、中間沒有棋子、國王沒有被將軍，而且經過和到達的格子都不能被攻擊。'],
+    [/過路兵|en passant/i, '<b>吃過路兵</b>：對方的兵從起點一次走兩格、剛好停在你的兵旁邊時，你可以<b>在下一步</b>斜走到它經過的那格把它吃掉。'],
+    [/升變|promot/i, '<b>升變</b>：兵走到對方底線時，可以變成皇后、城堡、主教或騎士（這裡自動變成皇后）。'],
+    [/逼和|和棋|stalemate|draw/i, '<b>和棋</b>：輪到走的一方沒有被將軍、卻沒有任何合法步（逼和）；同一局面重複三次；50 步內沒有吃子也沒有走兵；或雙方子力都不夠將死對方。'],
+    [/將死|將軍|check/i, '<b>將軍</b>：攻擊對方的國王，對方必須立刻化解（吃掉、擋住或移開國王）。如果化解不了，就是<b>將死</b>，遊戲結束。'],
+    [/開局|佈局|布局|opening/i, '<b>開局要點</b>：<ol><li>用兵佔中央（e4、d4）</li><li>先出騎士、主教</li><li>早點王車易位</li><li>不要太早出皇后</li><li>同一顆子不要連走好幾次</li></ol>'],
+    [/價值|多少分|value/i, '<b>棋子價值</b>（大約）：兵 1、騎士 3、主教 3、城堡 5、皇后 9。交換時用這個判斷划不划算。'],
+  ];
+  function onQuestion(qRaw) {
+    const q = qRaw.trim(); if (!q) return;
+    addMsg('me', esc(q));
+    if (/為什麼|剛剛|剛才|那步|上一步/.test(q)) {
+      const la = G.lastAnalysis;
+      addMsg('coach', la ? la.fb.html : '你上一步沒有明顯的問題。');
+    } else if (/怎麼下|下一步|走哪|建議|提示/.test(q)) {
+      if (canAct()) turnCard(G.gen, null); else addMsg('coach', '等輪到你的時候，我會直接給你建議。');
+    } else {
+      const t = TERMS.find(([re]) => re.test(q));
+      addMsg('coach', t ? t[1] : '這個問題超出內建教練能回答的範圍。你可以問我：「怎麼下？」「為什麼剛剛那步不好？」、各種棋子怎麼走、王車易位、吃過路兵、升變、和棋規則、開局要點、棋子價值。');
+    }
+    G.anchor = null;
+  }
+
+  // ---------- save / restore ----------
+  const STORE_KEY = 'chess-coach-v1'; let restoring = false;
+  function save() {
+    if (restoring || !G.S) return;
+    try {
+      const feed = [...$('#feed').children].slice(-40).map((d) => d.outerHTML).join('');
+      localStorage.setItem(STORE_KEY, JSON.stringify({ me: G.me, moves: G.moves.map((x) => x.m), coach: $('#selCoach').value, level: $('#selLevel').value, pause: $('#optPause').checked, feed }));
+    } catch (e) { /* storage unavailable */ }
+  }
+  function restore() {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) { d = null; }
+    if (!d || !Array.isArray(d.moves) || !d.moves.length) return false;
+    restoring = true;
+    $('#selColor').value = d.me === -1 ? '-1' : '1';
+    if (d.coach === 'std' || d.coach === 'off') $('#selCoach').value = d.coach;
+    if (d.level) $('#selLevel').value = d.level;
+    if (typeof d.pause === 'boolean') $('#optPause').checked = d.pause;
+    G.me = Number($('#selColor').value); G.gen = 1;
+    G.S = E.newState(E.START); G.moves = [];
+    const S = E.newState(E.START); const ok = [];
+    for (const m of d.moves) { if (!E.legalMoves(S).includes(m)) break; ok.push({ m }); E.make(S, m); }
+    G.moves = ok; G.busy = false; G.awaiting = false; G.selected = -1; G.targets = []; G.marks = []; G.anchor = null;
+    resize(); rebuild(ok.length);
+    if (typeof d.feed === 'string') { $('#feed').innerHTML = d.feed; document.querySelectorAll('#feed .acts button').forEach((x) => { x.disabled = true; }); }
+    checkOver(); restoring = false;
+    addMsg('coach', `↻ 已恢復上次的棋局（共 ${ok.length} 步）。`);
+    $('#feed').scrollTop = $('#feed').scrollHeight; G.anchor = null;
+    if (G.over) announceOver(); else if (G.S.side !== G.me) aiTurn(); else if (coachOn()) turnCard(G.gen, null);
+    return true;
+  }
+
+  // ---------- input ----------
+  function blockedNote() {
+    let t = '';
+    if (G.over) t = '這盤已經結束了，按「新局」重新開始，或按「悔棋」退回去。';
+    else if (G.awaiting) t = '剛才那步有問題，請先按訊息裡的「悔棋重下」或「照走，繼續」。';
+    else if (G.busy) t = '請稍等一下，電腦或教練正在思考。';
+    const last = $('#feed').lastElementChild;
+    if (t && (!last || !last.textContent.includes(t))) addMsg('coach', t);
+  }
+  cv.addEventListener('click', (e) => {
+    const rect = cv.getBoundingClientRect();
+    let c = Math.floor((e.clientX - rect.left - m0) / cell); let r = Math.floor((e.clientY - rect.top - m0) / cell);
+    if (c < 0 || c > 7 || r < 0 || r > 7) return;
+    if (flip()) { r = 7 - r; c = 7 - c; }
+    const sq = r * 8 + c;
+    if (!canAct()) { blockedNote(); return; }
+    const p = G.S.b[sq];
+    if (G.selected >= 0 && G.targets.includes(sq)) {
+      const lm = E.legalMoves(G.S).filter((m) => (m & 63) === G.selected && ((m >> 6) & 63) === sq);
+      const m = lm.find((x) => ((x >> 12) & 7) === Q) || lm[0];
+      G.selected = -1; G.targets = [];
+      userMove(m); return;
+    }
+    if (p * G.me > 0) {
+      G.selected = sq; G.targets = E.legalMoves(G.S).filter((m) => (m & 63) === sq).map((m) => (m >> 6) & 63);
+      if (!G.targets.length && E.inCheck(G.S, G.me)) setStatus('被將軍中，這個子不能解將');
+    } else { G.selected = -1; G.targets = []; }
+    draw();
+  });
+  $('#btnUndo').onclick = () => undo();
+  $('#btnNew').onclick = () => newGame();
+  $('#btnMore').onclick = () => { const open = $('.panel').classList.toggle('open'); $('#btnMore').setAttribute('aria-expanded', String(open)); };
+  $('#selColor').addEventListener('change', () => newGame());
+  ['#selLevel', '#optPause'].forEach((id) => $(id).addEventListener('change', () => save()));
+  $('#selCoach').addEventListener('change', () => {
+    save();
+    if (!coachOn()) { G.arrow = null; G.marks = []; draw(); addMsg('coach', '已切換成正常模式：不再自動提醒。'); }
+    else { addMsg('coach', '已切換成標準模式：每步都會提醒。'); if (canAct()) turnCard(G.gen, null); }
+  });
+  $('#askForm').onsubmit = (e) => { e.preventDefault(); const v = $('#askInput').value; $('#askInput').value = ''; onQuestion(v); };
+  window.addEventListener('resize', resize);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => draw());
+
+  if (!restore()) newGame();
+  window.__ch = { G, E };
+})();
+</script>
+</body>
+</html>

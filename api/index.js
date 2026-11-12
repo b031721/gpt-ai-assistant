@@ -5,6 +5,7 @@ import { validateLineSignature } from '../middleware/index.js';
 import { reply } from '../services/line.js';
 import storage from '../storage/index.js';
 import { fetchVersion, getVersion } from '../utils/index.js';
+import chessRouter from '../chess/router.js';
 import weiqiRouter from '../weiqi/router.js';
 import xiangqiRouter from '../xiangqi/router.js';
 
@@ -18,6 +19,7 @@ app.use(express.json({
 
 app.use(xiangqiRouter);
 app.use(weiqiRouter);
+app.use(chessRouter);
 
 app.get('/', (req, res) => {
   if (config.APP_URL) {
