@@ -118,6 +118,10 @@
       </div>
       <div class="more">
         <div class="row">
+          <select id="selOpp" title="對手">
+            <option value="ai" selected>人機對決（和電腦下）</option>
+            <option value="pvp">玩家對玩家（兩人輪流下）</option>
+          </select>
           <select id="selCoach" title="提醒模式">
             <option value="std" selected>標準模式：每步提醒</option>
             <option value="off">正常模式：不提醒</option>
@@ -665,6 +669,9 @@ function ENGINE(isWorker) {
 
   // ---------- game state ----------
   const G = {};
+  const isPvp = () => $('#selOpp').value === 'pvp';
+  // in two-player mode the coach speaks to whoever is about to move
+  const turnText = () => (isPvp() ? `輪到${G.S.side === 1 ? '紅方' : '黑方'}走` : '輪到你了（紅方）');
   const opts = () => ({
     coach: $('#selCoach').value !== 'off', pause: $('#optPause').checked, threat: $('#optThreat').checked,
   });
@@ -678,9 +685,14 @@ function ENGINE(isWorker) {
     G.lastAnalysis = null; G.lastAi = null; G.threat = null; G.chat = []; G.waitNext = false; G.anchor = null;
     G.gen = (G.gen || 0) + 1;
     $('#feed').innerHTML = '';
-    addMsg('coach', `你執<b style="color:var(--red)">紅方</b>（下方），先走。點棋子，再點藍點就能走。<br>
-      <b>標準模式</b>：輪到你時，我會直接告訴你<b>建議走哪一步</b>（棋盤上的<b style="color:var(--good)">綠色箭頭</b>）和原因；電腦每走一步，我會說明<b>它想做什麼、你要小心什麼</b>。不想要提醒的話，到「設定」改成正常模式。`);
-    updateMoves(); setStatus('輪到你了（紅方）'); draw(); save();
+    if (isPvp()) {
+      addMsg('coach', `<b>玩家對玩家</b>：紅方先走，兩人輪流在這支手機上下。點棋子，再點藍點就能走。<br>
+        <b>標準模式</b>：輪到誰，我就給誰<b>建議</b>（<b style="color:var(--good)">綠色箭頭</b>）和要小心的地方；每走完一步，我會說明<b>這步好不好、對方接下來可能怎麼走、有沒有疏忽</b>。不想要提醒，到「設定」改成正常模式。`);
+    } else {
+      addMsg('coach', `你執<b style="color:var(--red)">紅方</b>（下方），先走。點棋子，再點藍點就能走。<br>
+        <b>標準模式</b>：輪到你時，我會直接告訴你<b>建議走哪一步</b>（棋盤上的<b style="color:var(--good)">綠色箭頭</b>）和原因；電腦每走一步，我會說明<b>它想做什麼、你要小心什麼</b>。不想要提醒的話，到「設定」改成正常模式。`);
+    }
+    updateMoves(); setStatus(turnText()); draw(); save();
     if (!restoring && opts().coach) setTimeout(() => turnCard(G.gen, null), 50);
   }
 
@@ -705,7 +717,7 @@ function ENGINE(isWorker) {
     const feed = $('#feed');
     const d = document.createElement('div');
     d.className = `msg ${type}`;
-    const who = { turn: '教練', coach: '教練', good: '教練', warn: '教練', bad: '教練', ai: '電腦（黑方）', user: '你（紅方）', me: '你問', system: '' }[type] || '';
+    const who = { turn: '教練', coach: '教練', good: '教練', warn: '教練', bad: '教練', ai: '電腦（黑方）', user: isPvp() ? '落子' : '你（紅方）', me: '你問', system: '' }[type] || '';
     d.innerHTML = (who ? `<span class="who">${who}</span>` : '') + html;
     if (actions && actions.length) {
       const box = document.createElement('div'); box.className = 'acts';
@@ -758,10 +770,10 @@ function ENGINE(isWorker) {
   function names(b, sqs) { return [...new Set(sqs.map((s) => E.pieceName(b[s])))].join('、'); }
 
   // what does move m (on board b) accomplish? side = mover
-  function moveReason(b, m, side) {
+  function moveReason(b, m, side, enemyOverride) {
     const f = (m / 90) | 0; const t = m % 90; const p = b[f]; const q = b[t]; const ty = Math.abs(p);
     const reasons = [];
-    const enemyWord = side === 1 ? '對方' : '你';
+    const enemyWord = enemyOverride || ((isPvp() || side === 1) ? '對方' : '你');
     if (E.inCheck(E.newState(b, side), side)) reasons.push(ty === K ? '移動帥將，躲開將軍' : '解除將軍');
     if (q) reasons.push(`吃掉${enemyWord}的${E.pieceName(q)}`);
     const after = E.applyArr(b, m);
@@ -969,7 +981,7 @@ function ENGINE(isWorker) {
     const lm = E.legalMoves(G.S);
     if (!lm.length) {
       const checked = E.inCheck(G.S, G.S.side);
-      G.over = G.S.side === 1 ? 'lose' : 'win';
+      G.over = isPvp() ? (G.S.side === 1 ? 'blackwin' : 'redwin') : (G.S.side === 1 ? 'lose' : 'win');
       G.overReason = checked ? '將死' : '困斃（無子可動）';
       return;
     }
@@ -979,13 +991,14 @@ function ENGINE(isWorker) {
       const span = G.moves.slice(seen[seen.length - 3]);
       const redAll = span.filter((x) => x.side === 1).every((x) => x.chk);
       const blackAll = span.filter((x) => x.side === -1).every((x) => x.chk);
-      if (redAll && !blackAll) { G.over = 'lose'; G.overReason = '你一直將軍造成重複局面（長將），依規則判負'; }
-      else if (blackAll && !redAll) { G.over = 'win'; G.overReason = '電腦一直將軍造成重複局面（長將），依規則判負'; }
+      if (redAll && !blackAll) { G.over = isPvp() ? 'blackwin' : 'lose'; G.overReason = `${isPvp() ? '紅方' : '你'}一直將軍造成重複局面（長將），依規則判負`; }
+      else if (blackAll && !redAll) { G.over = isPvp() ? 'redwin' : 'win'; G.overReason = `${isPvp() ? '黑方' : '電腦'}一直將軍造成重複局面（長將），依規則判負`; }
       else { G.over = 'draw'; G.overReason = '雙方都沒有變著，同一局面重複三次'; }
     }
   }
 
   function announceOver() {
+    if (G.over === 'redwin' || G.over === 'blackwin') { addMsg('good', `🎉 ${G.over === 'redwin' ? '紅方' : '黑方'}獲勝！（${G.overReason}）按「悔棋」可以回顧，或按「新局」再來一盤。`); setStatus(`${G.over === 'redwin' ? '紅方' : '黑方'}獲勝`); return; }
     if (G.over === 'win') { addMsg('good', `🎉 恭喜你贏了！（${G.overReason}）按「悔棋」可以回顧，或按「新局」再來一盤。`); setStatus('你贏了！'); }
     else if (G.over === 'lose') { addMsg('bad', `這盤輸了（${G.overReason}）。別灰心——按「悔棋」退回幾步，我可以陪你找出更好的下法。`); setStatus('對局結束'); }
     else { addMsg('coach', `和棋（${G.overReason}）。`); setStatus('和棋'); }
@@ -1010,11 +1023,13 @@ function ENGINE(isWorker) {
     if (!G.moves.length) return;
     G.gen += 1; // cancel any pending continuation
     let n = G.moves.length - 1;
-    while (n > 0 && G.moves[n].side !== 1) n -= 1; // back to before the last red move
-    if (G.moves[n] && G.moves[n].side !== 1) return;
+    if (!isPvp()) {
+      while (n > 0 && G.moves[n].side !== 1) n -= 1; // back to before the last red move
+      if (G.moves[n] && G.moves[n].side !== 1) return;
+    }
     rebuild(n);
-    addMsg('system', '↩️ 已悔棋，回到你走棋之前。');
-    setStatus('輪到你了（紅方）');
+    addMsg('system', isPvp() ? `↩️ 已悔棋，退回一步，輪到${G.S.side === 1 ? '紅方' : '黑方'}。` : '↩️ 已悔棋，回到你走棋之前。');
+    setStatus(turnText());
     if (opts().coach) turnCard(G.gen, null);
   }
 
@@ -1022,36 +1037,45 @@ function ENGINE(isWorker) {
   async function userMove(m) {
     const myGen = G.gen;
     G.busy = true;
+    const side = G.S.side; const who = isPvp() ? (side === 1 ? '紅方' : '黑方') : '你';
     const bBefore = cloneBoard(); const hist = histBefore();
     const r = await animateAndApply(m);
-    addMsg('user', `你走 <b>${r.nota}</b>${r.cap ? `，吃掉對方的${E.pieceName(r.cap)}` : ''}。`);
+    addMsg('user', `${who}走 <b>${r.nota}</b>${r.cap ? `，吃掉對方的${E.pieceName(r.cap)}` : ''}。`);
     const kNow = G.keys[G.keys.length - 1];
     if (!G.over && G.moves[G.moves.length - 1].chk && G.keys.filter((x) => x === kNow).length === 2) {
-      addMsg('warn', '⚠️ 這個局面已經出現第二次了。如果你繼續用將軍造成重複（長將），依規則會<b>判你輸</b>，下次要換一步。');
+      addMsg('warn', `⚠️ 這個局面已經出現第二次了。如果${who}繼續用將軍造成重複（長將），依規則會<b>判${who}輸</b>，下次要換一步。`);
     }
     if (G.over) { G.busy = false; announceOver(); return; }
     if (opts().coach) {
       setStatus('教練正在看你這步…', true);
-      const a = await ask('analyze', { b: bBefore, side: 1, move: m, hist, timeMs: 700 });
+      const a = await ask('analyze', { b: bBefore, side, move: m, hist, timeMs: 700 });
       if (myGen !== G.gen) return;
-      const fb = buildFeedback(bBefore, m, a);
+      const fb = buildFeedback(bBefore, m, a, side);
       G.lastAnalysis = { ...a, bBefore, m, nota: r.nota, fb };
       if (fb.sev >= 2 && opts().pause) {
         G.busy = false; G.awaiting = true;
         if (a.reply) { G.arrow = { m: a.reply, color: 'rgba(200,60,40,.8)' }; draw(); }
         addMsg(fb.type, `${fb.html}<br><span style="color:var(--muted)">（紅色箭頭是對方可能的回應）要不要悔棋重新想一步？</span>`, [
           ['悔棋重下', () => { G.awaiting = false; undo(); }, 'primary'],
-          ['照走，繼續', () => { if (myGen === G.gen) { G.awaiting = false; G.arrow = null; aiTurn(); } }],
+          ['照走，繼續', () => { if (myGen === G.gen) { G.awaiting = false; G.arrow = null; nextTurn(myGen); } }],
         ]);
         setStatus('要悔棋重下，還是照走？');
         return;
       }
       addMsg(fb.type, fb.html);
     }
-    await aiTurn();
+    await nextTurn(myGen);
   }
 
-  function buildFeedback(bBefore, m, a) {
+  // after a move: the computer replies, or in two-player mode the other player gets their card
+  async function nextTurn(myGen) {
+    if (myGen !== G.gen || G.over) return;
+    if (!isPvp()) { await aiTurn(); return; }
+    G.busy = false; G.anchor = null;
+    if (opts().coach) await turnCard(myGen, null); else { setStatus(turnText()); draw(); }
+  }
+
+  function buildFeedback(bBefore, m, a, side = 1) {
     const bAfter = E.applyArr(bBefore, m);
     let loss = a.best === m ? 0 : Math.max(0, a.bestScore - a.userScore);
     const userMated = a.userScore < -MATE + 300; const bestMated = a.bestScore < -MATE + 300;
@@ -1059,13 +1083,13 @@ function ENGINE(isWorker) {
     if (userMated && !bestMated) sev = 3;
     if (bestMated) { sev = 0; loss = 0; }
     const best = mvSpan(bBefore, a.best);
-    const bestWhy = a.best ? moveReason(bBefore, a.best, 1) : '';
+    const bestWhy = a.best ? moveReason(bBefore, a.best, side, '對方') : '';
     let reply = '';
     if (a.reply) {
       const q = bAfter[a.reply % 90];
-      const S2 = E.newState(E.applyArr(bAfter, a.reply), 1);
-      const chk = E.inCheck(S2, 1);
-      reply = `你走完之後，對方可以走 <b>${E.notation(bAfter, a.reply)}</b>${q ? `，吃掉你的${E.pieceName(q)}` : ''}${chk ? '，而且是將軍' : ''}`;
+      const S2 = E.newState(E.applyArr(bAfter, a.reply), side);
+      const chk = E.inCheck(S2, side);
+      reply = `這步走完之後，對方可以走 <b>${E.notation(bAfter, a.reply)}</b>${q ? `，吃掉你的${E.pieceName(q)}` : ''}${chk ? '，而且是將軍' : ''}`;
       if (userMated) reply += '，形成殺棋';
       reply += '。';
     }
@@ -1075,27 +1099,31 @@ function ENGINE(isWorker) {
       html = '局面已經很危險了，對方有殺棋。盡量拖延、找機會，下一盤我們早點注意帥的安全。';
     } else if (sev === 0) {
       type = 'good';
-      html = `👍 好棋！${a.best === m ? '這正是教練也會選的著法' : '這步和最佳著法差不多好'}——${moveReason(bBefore, m, 1)}。`;
+      html = `👍 好棋！${a.best === m ? '這正是教練也會選的著法' : '這步和最佳著法差不多好'}——${moveReason(bBefore, m, side, '對方')}。`;
     } else if (sev === 1) {
       type = 'coach';
       html = `🙂 這步還可以，但有更好的選擇：${best}，${bestWhy}。`;
     } else {
       type = sev === 2 ? 'warn' : 'bad';
-      html = `${sev === 2 ? '⚠️ 這步不太好' : '❌ 這是失誤'}（${userMated ? '可能被將死' : lossText(loss)}）。${reply}<br>比較好的下法是 ${best}：${bestWhy}。<br>💭 ${lesson(bBefore, m, a)}`;
+      html = `${sev === 2 ? '⚠️ 這步不太好' : '❌ 這是失誤'}（${userMated ? '可能被將死' : lossText(loss)}）。${reply}<br>比較好的下法是 ${best}：${bestWhy}。<br>💭 ${lesson(bBefore, m, a, side)}`;
+    }
+    if (sev <= 1 && !bestMated && a.reply) {
+      // what is likely to happen next, so the player can prepare
+      html += `<br>👀 接下來：對方最可能走 <b>${E.notation(bAfter, a.reply)}</b>，${moveReason(bAfter, a.reply, -side, '你')}。`;
     }
     if (!bestMated) html += `<br><span style="color:var(--muted);font-size:13px">局勢：${scoreText(a.userScore)}</span>`;
     return { sev, html, type, loss };
   }
 
-  function lesson(bBefore, m, a) {
+  function lesson(bBefore, m, a, side = 1) {
     const t = m % 90; const bAfter = E.applyArr(bBefore, m);
     if (a.userScore < -MATE + 300) return '走之前先檢查帥的安全：對方的車、馬、炮能不能直接攻擊到你的九宮？有沒有一步殺？';
     if (a.reply) {
       const rt = a.reply % 90; const q = bAfter[rt];
       if (q && rt === t) return '想一想：走到這個位置之前，先問自己「對方有沒有子能吃到這裡？我有沒有保護？」';
       if (q) return `這步讓你的${E.pieceName(q)}陷入危險（可能是原本就被攻擊卻沒注意，或者這步讓它失去了保護）。每一步之前，先掃一遍：自己哪些子正被攻擊？`;
-      const S2 = E.newState(E.applyArr(bAfter, a.reply), 1);
-      if (E.inCheck(S2, 1)) return '注意將帥的安全：對方可以藉將軍取得先手，走棋前先看看對方有哪些將軍的手段。';
+      const S2 = E.newState(E.applyArr(bAfter, a.reply), side);
+      if (E.inCheck(S2, side)) return '注意將帥的安全：對方可以藉將軍取得先手，走棋前先看看對方有哪些將軍的手段。';
     }
     return '試著站在對方的角度想：「如果我是對方，下一步最想走什麼？」這樣就比較不會漏看對方的手段。';
   }
@@ -1114,7 +1142,7 @@ function ENGINE(isWorker) {
     if (opts().coach) { await turnCard(myGen, { m: res.move, bBefore, nota: r.nota }); return; }
     addMsg('ai', describeAiMove(bBefore, res.move, r));
     if (myGen !== G.gen) return;
-    G.busy = false; G.anchor = null; setStatus('輪到你了（紅方）'); draw();
+    G.busy = false; G.anchor = null; setStatus(turnText()); draw();
   }
 
   function describeAiMove(bBefore, m, r) {
@@ -1124,18 +1152,18 @@ function ENGINE(isWorker) {
   }
 
   async function threatInfo() {
-    const b = cloneBoard();
-    if (E.inCheck(G.S, 1)) return { inCheck: true };
-    const t = await ask('threat', { b, side: 1, timeMs: 450 });
+    const b = cloneBoard(); const side = G.S.side;
+    if (E.inCheck(G.S, side)) return { inCheck: true };
+    const t = await ask('threat', { b, side, timeMs: 450 });
     if (!t || !t.move) return null;
     const gain = t.score - t.base;
     if (t.score > MATE - 300 || gain > 150) {
       const q = b[t.move % 90];
-      const after = E.applyArr(b, t.move); const S2 = E.newState(after, 1);
+      const after = E.applyArr(b, t.move); const S2 = E.newState(after, side);
       let desc = '';
       if (t.score > MATE - 300) desc = '直接形成殺棋';
       else if (q) desc = `吃掉你的${E.pieceName(q)}`;
-      else if (E.inCheck(S2, 1)) desc = '將軍並取得優勢';
+      else if (E.inCheck(S2, side)) desc = '將軍並取得優勢';
       else desc = '取得明顯優勢';
       return { move: t.move, desc, nota: E.notation(b, t.move), mate: t.score > MATE - 300, target: q ? t.move % 90 : -1 };
     }
@@ -1144,15 +1172,17 @@ function ENGINE(isWorker) {
 
   // One card per turn: what the computer did, what to watch out for, and the move to play.
   async function turnCard(myGen, ai) {
-    if (G.over || G.S.side !== 1 || myGen !== G.gen) return;
+    if (G.over || (!isPvp() && G.S.side !== 1) || myGen !== G.gen) return;
+    const side = G.S.side; const sideW = side === 1 ? '紅方' : '黑方';
     G.busy = true; setStatus('教練正在幫你看下一步…', true);
     const b = cloneBoard();
-    const hang = E.hanging(b, 1);
+    const hang = E.hanging(b, side);
     const th = await threatInfo();
     if (myGen !== G.gen) return;
     const r = await getHintData();
     if (myGen !== G.gen) return;
     const parts = [];
+    if (isPvp()) parts.push(`<div class="sec"><div class="h" style="color:${side === 1 ? 'var(--red)' : 'var(--ink)'}">輪到${sideW}走</div></div>`);
     if (ai) {
       const chk = E.inCheck(G.S, 1);
       parts.push(`<div class="sec"><div class="h">電腦走了 ${ai.nota}${chk ? '　<span style="color:var(--bad)">將軍！</span>' : ''}</div>它的用意：${moveReason(ai.bBefore, ai.m, -1)}。</div>`);
@@ -1160,23 +1190,23 @@ function ENGINE(isWorker) {
     const warn = [];
     if (th && th.inCheck) warn.push('你被將軍了，這步一定要先解將（吃掉、擋住或移開帥）。');
     hang.slice(0, 3).forEach((h) => {
-      warn.push(`你的<b>${E.pieceName(b[h.sq])}</b>（${sqName(h.sq)}）正被對方的${names(b, h.atk)}攻擊${h.def.length ? '，被換掉會吃虧' : '，而且<b>沒有保護</b>'}。`);
+      warn.push(`你的<b>${E.pieceName(b[h.sq])}</b>（${sqName(h.sq, side)}）正被對方的${names(b, h.atk)}攻擊${h.def.length ? '，被換掉會吃虧' : '，而且<b>沒有保護</b>'}。`);
     });
     if (th && !th.inCheck) warn.push(`對方下一步想走 <b>${th.nota}</b>，${th.desc}。`);
     if (warn.length) parts.push(`<div class="sec caution"><div class="h">⚠️ 要小心</div><ul>${warn.map((w) => `<li>${w}</li>`).join('')}</ul></div>`);
     if (r && r.move) {
       const after = E.applyArr(b, r.move);
       const pv = r.pv && r.pv.length > 1 ? pvText(after, r.pv.slice(1), 4) : '';
-      const why = moveReason(b, r.move, 1);
+      const why = moveReason(b, r.move, side, '對方');
       const handles = /安全|保護|吃掉|將/.test(why) || (th && th.inCheck);
       const note = warn.length && !handles ? '<div class="muted">這步沒有直接處理上面的威脅：教練算過，先走這步比較重要，對方就算吃了你也不會吃虧。</div>' : '';
-      parts.push(`<div class="sec sug"><div class="h">👉 建議你走</div><div class="big">${mvSpan(b, r.move)}</div><div>為什麼：${why}。</div>${note}${pv ? `<div class="muted">之後可能：${pv}</div>` : ''}<div class="muted">局勢：${scoreText(r.score)}</div></div>`);
+      parts.push(`<div class="sec sug"><div class="h">👉 建議${isPvp() ? sideW : '你'}走</div><div class="big">${mvSpan(b, r.move)}</div><div>為什麼：${why}。</div>${note}${pv ? `<div class="muted">之後可能：${pv}</div>` : ''}<div class="muted">局勢：${scoreText(r.score)}</div></div>`);
       G.arrow = { m: r.move, color: 'rgba(40,140,80,.85)' };
     }
     G.marks = hang.map((h) => h.sq);
     if (th && th.target >= 0 && !G.marks.includes(th.target)) G.marks.push(th.target);
     addMsg('turn', parts.join(''));
-    G.busy = false; G.anchor = null; setStatus('輪到你了：綠色箭頭是建議'); draw();
+    G.busy = false; G.anchor = null; setStatus(isPvp() ? `${turnText()}：綠色箭頭是建議` : '輪到你了：綠色箭頭是建議'); draw();
   }
 
   async function coachBeforeTurn(myGen) {
@@ -1235,7 +1265,7 @@ function ENGINE(isWorker) {
     try {
       const feed = [...$('#feed').children].slice(-40).map((d) => d.outerHTML).join('');
       localStorage.setItem(STORE_KEY, JSON.stringify({
-        moves: G.moves.map((x) => x.m), level: $('#selLevel').value, coach: $('#selCoach').value, pause: $('#optPause').checked, threat: $('#optThreat').checked, feed,
+        opp: $('#selOpp').value, moves: G.moves.map((x) => x.m), level: $('#selLevel').value, coach: $('#selCoach').value, pause: $('#optPause').checked, threat: $('#optThreat').checked, feed,
       }));
     } catch (e) { /* storage unavailable */ }
   }
@@ -1244,6 +1274,7 @@ function ENGINE(isWorker) {
     try { d = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) { d = null; }
     if (!d || !Array.isArray(d.moves) || !d.moves.length) return false;
     restoring = true;
+    if (d.opp === 'pvp' || d.opp === 'ai') $('#selOpp').value = d.opp;
     resetGame();
     if (d.level) $('#selLevel').value = d.level;
     if (d.coach === 'std' || d.coach === 'off') $('#selCoach').value = d.coach;
@@ -1266,7 +1297,7 @@ function ENGINE(isWorker) {
     if (G.over) announceOver();
     $('#feed').scrollTop = $('#feed').scrollHeight;
     G.anchor = null;
-    if (!G.over && G.S.side === -1) aiTurn(); // resume: the computer moves on its own
+    if (!G.over && G.S.side === -1 && !isPvp()) aiTurn(); // resume: the computer moves on its own
     else if (!G.over && opts().coach) turnCard(G.gen, null);
     return true;
   }
@@ -1276,14 +1307,14 @@ function ENGINE(isWorker) {
     if (G.hintData) return G.hintData;
     const myGen = G.gen;
     G.busy = true; setStatus('教練思考中…', true);
-    const r = await ask('search', { b: cloneBoard(), side: 1, opts: { timeMs: 1200, maxDepth: 16, hist: histBefore() } });
-    G.busy = false; setStatus('輪到你了（紅方）');
+    const r = await ask('search', { b: cloneBoard(), side: G.S.side, opts: { timeMs: 1200, maxDepth: 16, hist: histBefore() } });
+    G.busy = false; setStatus(turnText());
     if (myGen !== G.gen) return null;
     G.hintData = r;
     return r;
   }
 
-  const canAct = () => !G.busy && !G.over && !G.awaiting && !G.waitNext && G.S.side === 1;
+  const canAct = () => !G.busy && !G.over && !G.awaiting && !G.waitNext && (isPvp() || G.S.side === 1);
 
   async function hint(full) {
     if (!canAct()) return;
@@ -1362,7 +1393,7 @@ function ENGINE(isWorker) {
     G.busy = true; setStatus('評估局勢中…', true);
     const side = G.S.side;
     const r = await ask('search', { b: cloneBoard(), side, opts: { timeMs: 1200, maxDepth: 16, hist: histBefore() } });
-    G.busy = false; setStatus(G.over ? '對局結束' : G.S.side === 1 ? '輪到你了（紅方）' : '電腦思考中…');
+    G.busy = false; setStatus(G.over ? '對局結束' : (isPvp() || G.S.side === 1) ? turnText() : '電腦思考中…');
     if (myGen !== G.gen) return;
     const v = side === 1 ? r.score : -r.score;
     const b = cloneBoard();
@@ -1435,18 +1466,19 @@ function ENGINE(isWorker) {
   async function engineContext() {
     const b = cloneBoard(); const lines = [];
     lines.push(`輪到：${sideName(G.S.side)}`);
-    if (G.S.side === 1 && !G.over) {
+    const side = G.S.side; const sw = sideName(side);
+    if ((isPvp() || side === 1) && !G.over) {
       const r = await getHintData();
       if (r && r.move) {
-        lines.push(`引擎建議紅方走：${E.notation(b, r.move)}（${moveReason(b, r.move, 1)}）`);
+        lines.push(`引擎建議${sw}走：${E.notation(b, r.move)}（${moveReason(b, r.move, side, '對方')}）`);
         if (r.pv && r.pv.length > 1) lines.push(`主要變化：${pvText(b, r.pv, 5)}`);
         lines.push(`局勢評估：${scoreText(r.score)}`);
       }
-      const hang = E.hanging(b, 1);
-      if (hang.length) lines.push(`紅方有危險的子：${hang.map((h) => `${E.pieceName(b[h.sq])}（被${names(b, h.atk)}攻擊）`).join('、')}`);
+      const hang = E.hanging(b, side);
+      if (hang.length) lines.push(`${sw}有危險的子：${hang.map((h) => `${E.pieceName(b[h.sq])}（被${names(b, h.atk)}攻擊）`).join('、')}`);
       const th = await threatInfo();
-      if (th && th.inCheck) lines.push('紅方正被將軍');
-      else if (th) lines.push(`黑方威脅：${th.nota}（${th.desc}）`);
+      if (th && th.inCheck) lines.push(`${sw}正被將軍`);
+      else if (th) lines.push(`${sideName(-side)}威脅：${th.nota}（${th.desc}）`);
     }
     if (G.lastAnalysis && G.lastAnalysis.fb) {
       const la = G.lastAnalysis;
@@ -1482,9 +1514,9 @@ function ENGINE(isWorker) {
 
   // facts the coach can quote: moves the student cannot make right now, and why
   function illegalFacts() {
-    if (G.S.side !== 1) return '';
+    if (!isPvp() && G.S.side !== 1) return '';
     const b = cloneBoard(); const legal = new Set(E.legalMoves(G.S));
-    return E.gen(G.S, 1, false, []).filter((m) => !legal.has(m)).slice(0, 12)
+    return E.gen(G.S, G.S.side, false, []).filter((m) => !legal.has(m)).slice(0, 12)
       .map((m) => `${E.notation(b, m)}：${illegalReason(b, m).replace(/<[^>]+>/g, '')}`).join('\n');
   }
   async function askClaude(q) {
@@ -1494,16 +1526,16 @@ function ENGINE(isWorker) {
     const b = cloneBoard();
     let ctxText = '';
     try { ctxText = (!G.busy || G.hintData) ? await engineContext() : ''; } catch (e) { ctxText = ''; }
-    const legalList = G.S.side === 1 ? E.legalMoves(G.S).map((m) => E.notation(b, m)).join('、') : '';
+    const legalList = (isPvp() || G.S.side === 1) ? E.legalMoves(G.S).map((m) => E.notation(b, m)).join('、') : '';
     const history = G.chat.slice(-6).map((t) => `${t.role === 'user' ? '學生' : '教練'}：${t.content}`).join('\n');
     const prompt = [
-      '你是一位親切、有耐心的中國象棋教練，正在手機上指導學生和電腦對弈。學生執紅方（棋盤下方），電腦執黑方（上方）。',
+      isPvp() ? `你是一位親切、有耐心的中國象棋教練，正在手機上指導兩位玩家對弈（紅方在下、黑方在上），現在輪到${sideName(G.S.side)}，請以輪到走棋的一方為對象回答。` : '你是一位親切、有耐心的中國象棋教練，正在手機上指導學生和電腦對弈。學生執紅方（棋盤下方），電腦執黑方（上方）。',
       '回答規則：用繁體中文、口語清楚，先直接回答學生的問題，再補充原因；盡量 200 字以內，可條列。棋盤、合法著法、不能走的原因與引擎建議一律以下面的資料為準，不要自己猜棋子位置；資料裡已有答案就直接用。規則解釋要正確（兵卒過河前後、炮架、蹩馬腿、塞象眼、送將、王不見王、長將判負）。提到棋步用中文記譜。',
       `【目前棋盤】（上方是黑方，下方是紅方；＋是空點）\n${boardText(b)}`,
       `【棋譜】${G.moves.map((x) => x.nota).join(' ') || '（尚未開始）'}`,
       `【引擎分析】\n${ctxText || '（無）'}`,
-      `【紅方現在不能走的著法與原因】\n${illegalFacts() || '（無）'}`,
-      `【紅方所有合法著法】${legalList || '（現在不是紅方走）'}`,
+      `【${sideName(G.S.side)}現在不能走的著法與原因】\n${illegalFacts() || '（無）'}`,
+      `【${sideName(G.S.side)}所有合法著法】${legalList || '（現在不是學生走）'}`,
       history ? `【之前的對話】\n${history}` : '',
       `【學生的問題】${q}`,
     ].filter(Boolean).join('\n\n');
@@ -1582,19 +1614,21 @@ function ENGINE(isWorker) {
 
   // why a move the player tried is not allowed
   function illegalReason(b, m) {
-    const after = E.applyArr(b, m); const S2 = E.newState(after, -1); const kSq = after.indexOf(K);
-    const atk = E.gen(S2, -1, true, []).filter((x) => x % 90 === kSq).map((x) => (x / 90) | 0);
+    const side = b[(m / 90) | 0] > 0 ? 1 : -1;
+    const after = E.applyArr(b, m); const S2 = E.newState(after, -side); const kSq = after.indexOf(K * side);
+    const atk = E.gen(S2, -side, true, []).filter((x) => x % 90 === kSq).map((x) => (x / 90) | 0);
     if (!atk.length) return '走了之後兩個將帥會在同一直線上直接見面（王不見王），規則不允許。';
     const a = atk[0]; const ap = after[a];
     let how = '';
-    if (ap === -C) how = '對方的砲和你的帥之間會<b>正好只剩一個子</b>，那個子就變成砲的「炮架」，砲可以隔著它直接打到帥。';
-    else if (ap === -N) how = '對方的馬可以直接跳到你的帥（馬腿沒有被擋住）。';
-    else if (ap === -R) how = '對方的車和你的帥之間會變成沒有東西擋。';
-    return `走了之後，你的帥會被對方的${E.pieceName(ap)}將軍。${how}自己讓自己被將軍叫「送將」，規則不允許。`;
+    const kName = side === 1 ? '帥' : '將';
+    if (Math.abs(ap) === C) how = '對方的砲和你的帥之間會<b>正好只剩一個子</b>，那個子就變成砲的「炮架」，砲可以隔著它直接打到帥。';
+    else if (Math.abs(ap) === N) how = '對方的馬可以直接跳過來將軍（馬腿沒有被擋住）。';
+    else if (Math.abs(ap) === R) how = '對方的車和你的將帥之間會變成沒有東西擋。';
+    return `走了之後，你的${kName}會被對方的${E.pieceName(ap)}將軍。${how}自己讓自己被將軍叫「送將」，規則不允許。`;
   }
   function explainIllegal(from, to) {
     const b = cloneBoard(); const m = from * 90 + to; const p = b[from];
-    if (E.gen(G.S, 1, false, []).includes(m)) addMsg('warn', `❌ ${E.pieceName(p)}不能走到那裡：${illegalReason(b, m)}`);
+    if (E.gen(G.S, G.S.side, false, []).includes(m)) addMsg('warn', `❌ ${E.pieceName(p)}不能走到那裡：${illegalReason(b, m)}`);
     else addMsg('coach', `${E.pieceName(p)}不能這樣走。${RULES[['', 'K', 'A', 'B', 'N', 'R', 'C', 'P'][Math.abs(p)]]}`);
   }
 
@@ -1609,12 +1643,13 @@ function ENGINE(isWorker) {
     if (!canAct()) { blockedNote(); return; }
     const p = G.S.b[sq];
     if (G.selected >= 0 && G.targets.includes(sq)) { userMove(G.selected * 90 + sq); return; }
-    if (G.selected >= 0 && !(p > 0)) { explainIllegal(G.selected, sq); G.selected = -1; G.targets = []; draw(); return; }
-    if (p > 0) {
+    const mine = p * G.S.side > 0;
+    if (G.selected >= 0 && !mine) { explainIllegal(G.selected, sq); G.selected = -1; G.targets = []; draw(); return; }
+    if (mine) {
       G.selected = sq;
       G.targets = E.legalMoves(G.S).filter((m) => ((m / 90) | 0) === sq).map((m) => m % 90);
       if (!G.targets.length) {
-        const pseudo = E.gen(G.S, 1, false, []).filter((m) => ((m / 90) | 0) === sq);
+        const pseudo = E.gen(G.S, G.S.side, false, []).filter((m) => ((m / 90) | 0) === sq);
         if (pseudo.length) addMsg('warn', `這個${E.pieceName(p)}現在<b>哪裡都不能走</b>：${illegalReason(cloneBoard(), pseudo[0])}`);
       }
     } else { G.selected = -1; G.targets = []; }
@@ -1624,6 +1659,7 @@ function ENGINE(isWorker) {
   $('#btnNew').onclick = () => { G.busy = false; resetGame(); };
   $('#btnUndo').onclick = () => undo();
   ['#selLevel', '#optPause'].forEach((id) => { $(id).addEventListener('change', () => save()); });
+  $('#selOpp').addEventListener('change', () => { G.busy = false; resetGame(); });
   $('#selCoach').addEventListener('change', () => {
     save();
     if (!opts().coach) { G.arrow = null; G.marks = []; draw(); addMsg('system', '已切換成正常模式：不再自動提醒。'); }
