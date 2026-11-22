@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>聖經學英文</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header id="bar">
+  <a class="back" href="../" aria-label="回到捲軸書房">← 書房</a>
+  <button id="prevCh" aria-label="上一章">‹</button>
+  <button id="where" aria-label="選擇書卷和章">…</button>
+  <button id="nextCh" aria-label="下一章">›</button>
+  <button id="btnSaved" aria-label="我的句子本">☆</button>
+  <button id="btnSet" aria-label="設定">設定</button>
+</header>
+
+<main id="list"></main>
+
+<nav id="player" aria-label="朗讀">
+  <button id="play" class="main">▶ 播放本章</button>
+  <button id="shadow" class="toggle" aria-pressed="false">跟讀模式</button>
+</nav>
+
+<!-- 選書卷、章 -->
+<section id="picker" class="sheet" hidden aria-label="選擇書卷和章">
+  <div class="head"><h2>選一章來練習</h2><button class="x" data-close aria-label="關閉">✕</button></div>
+  <div class="body">
+    <h3>適合練對話的章節</h3>
+    <div id="picks" class="picks"></div>
+    <h3>舊約</h3><div id="ot" class="books"></div>
+    <h3>新約</h3><div id="nt" class="books"></div>
+    <div id="chapters" class="chapters" hidden></div>
+  </div>
+</section>
+
+<!-- 設定 -->
+<section id="settings" class="sheet" hidden aria-label="設定">
+  <div class="head"><h2>設定</h2><button class="x" data-close aria-label="關閉">✕</button></div>
+  <div class="body">
+    <h3>英文版本</h3>
+    <div class="seg" id="verSeg"><button data-v="1">現代英文（BSB）</button><button data-v="2">簡單英文（BBE）</button></div>
+    <p class="hint">BSB 是 2023 年的現代英文譯本；BBE 只用大約一千個基本單字，適合打基礎。兩個都是公版，可以自由使用。</p>
+    <h3>顯示</h3>
+    <div class="seg" id="showSeg"><button data-s="both">英文＋中文</button><button data-s="en">只看英文</button><button data-s="quiz">遮住英文</button></div>
+    <p class="hint">「遮住英文」：先看中文，自己試著用英文說出來，再點一下英文看答案。</p>
+    <h3>語速</h3>
+    <div class="seg" id="rateSeg"><button data-r="0.6">慢</button><button data-r="0.8">稍慢</button><button data-r="1">正常</button></div>
+    <h3>跟讀時停多久</h3>
+    <div class="seg" id="gapSeg"><button data-g="1">一樣長</button><button data-g="1.5">1.5 倍</button><button data-g="2">2 倍</button></div>
+    <h3>英文聲音</h3>
+    <select id="voice"></select>
+    <h3>字體大小</h3>
+    <div class="seg" id="sizeSeg"><button data-z="17">小</button><button data-z="19">中</button><button data-z="22">大</button></div>
+  </div>
+</section>
+
+<!-- 我的句子本 -->
+<section id="saved" class="sheet" hidden aria-label="我的句子本">
+  <div class="head"><h2>我的句子本</h2><button class="x" data-close aria-label="關閉">✕</button></div>
+  <div class="body"><ul id="savedList"></ul></div>
+</section>
+
+<!-- 點單字的小視窗 -->
+<section id="word" hidden aria-live="polite">
+  <button class="x" id="wordClose" aria-label="關閉">✕</button>
+  <p class="w"><b id="wordText"></b><button id="wordSay" aria-label="念這個字">🔊</button></p>
+  <p id="wordOut" class="out"></p>
+</section>
+
+<!-- 跟讀評分 -->
+<section id="check" hidden aria-live="polite">
+  <button class="x" id="checkClose" aria-label="關閉">✕</button>
+  <p id="checkTitle" class="t"></p>
+  <p id="checkTarget" class="target"></p>
+  <p id="checkHeard" class="heard"></p>
+</section>
+
+<div id="toast" hidden></div>
+<script src="books.js"></script>
+<script src="app.js"></script>
+<script src="speech.js"></script>
+<script src="practice.js"></script>
+</body>
+</html>
