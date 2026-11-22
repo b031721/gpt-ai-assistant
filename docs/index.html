@@ -992,11 +992,15 @@
   /* ---------- 書架 ---------- */
   const memory = {};   // IndexedDB 不能用時的備援
   let shelf = [];
+  // 內建書單：連得上就更新，連不上（離線、網路慢）就用上次存在手機裡的那份，免得內建書從書架消失
   async function serverBooks() {
+    let list = null;
     try {
       const r = await fetch('books/index.json', { cache: 'no-cache' });
-      return r.ok ? ((await r.json()).books || []).map((b) => ({ ...b, id: 'pd-' + b.id, server: true, where: tr('內建好書') })) : [];
-    } catch { return []; }
+      if (r.ok) { list = (await r.json()).books || null; if (list && list.length) store.set('reader:serverList', list); }
+    } catch {}
+    if (!list || !list.length) list = store.get('reader:serverList', []);
+    return list.map((b) => ({ ...b, id: 'pd-' + b.id, server: true, where: tr('內建好書') }));
   }
   let serverList = null;
   async function refreshShelf() {
@@ -1049,8 +1053,11 @@
             db.setPos('cache3:' + id, { html: parsed.html });
           }
         } else {
-          const r = await fetch('books/' + entry.file, { cache: 'no-cache' });
-          const text = r.ok ? await r.text() : '';
+          // 內建的 txt：每次都拿最新版（譯本會陸續增加章節），拿不到就用上次存在手機裡的那份
+          let text = '';
+          try { const r = await fetch('books/' + entry.file, { cache: 'no-cache' }); text = r.ok ? await r.text() : ''; } catch {}
+          if (text.trim()) db.setPos('text:' + id, { text });
+          else text = ((await db.getPos('text:' + id)) || {}).text || '';
           if (!text.trim()) throw new Error('missing');
           b = { ...entry, html: /\.html?$/.test(entry.file) ? text : txtToHtml(text) };
         }
@@ -1940,7 +1947,7 @@ Surrounding text: ${context}`;
   /* ---------- 自動更新到最新版 ---------- */
   // 網站每次更新都會產生新的 version.json。剛打開時發現有新版就直接換成新版；
   // 正在閱讀時只在上方顯示「更新」按鈕，不打斷閱讀。換版前先存好閱讀位置。
-  const APP_VERSION = '7207172bd5';
+  const APP_VERSION = '049ba78317';
   const updater = (() => {
     let latest = null, checking = false;
     const openedAt = Date.now();
@@ -1976,8 +1983,9 @@ Surrounding text: ${context}`;
   updater.check();
 
   refreshShelf().then(() => {
+    // 打開上次讀的那本書；那本書暫時找不到時回到首頁，不要改開別本
     const want = location.hash.slice(1) || store.get('reader:last', null);
-    const id = shelf.some((b) => b.id === want) ? want : (shelf.find((b) => !b.server) || {}).id;
+    const id = want ? (shelf.some((b) => b.id === want) ? want : null) : (shelf.find((b) => !b.server) || {}).id;
     if (id) openBook(id); else welcome();
   });
 })();
