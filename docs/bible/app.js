@@ -43,11 +43,51 @@
       </article>`).join('') + `<div class="chapter-end">${esc(BOOKS[b - 1][0])} 第 ${c} 章完<br>${c < BOOKS[b - 1][2] || b < 66 ? '<button id="goNext">下一章 ›</button>' : ''}</div>`;
     const n = $('#goNext'); if (n) n.onclick = () => step(1);
     document.title = `${BOOKS[b - 1][0]} ${c} | 聖經學英文`;
+    const last = store.get('bible:last', null);
+    if (last && last.b === b && last.c === c) markLast(last.v);
   }
   App.render = render;
 
+  /* ---------- 記住讀到哪一節：畫上黃線，下次打開問要不要回去 ---------- */
+  let pending = null, loading = false, saveT = 0;
+  try { history.scrollRestoration = 'manual'; } catch {}
+  const readLine = () => Math.max(110, innerHeight * 0.3);
+  function currentVerse() {
+    const els = [...document.querySelectorAll('.verse')];
+    const el = els.find((e) => e.getBoundingClientRect().bottom > readLine());
+    return el ? App.rows[+el.dataset.i][0] : null;
+  }
+  function markLast(v) {
+    document.querySelectorAll('.verse.lastread').forEach((e) => e.classList.remove('lastread'));
+    const el = v && document.getElementById('v' + v);
+    if (el) el.classList.add('lastread');
+  }
+  function saveSpot() {
+    if (pending || loading || !App.rows.length) return;
+    const v = currentVerse(); if (!v) return;
+    store.set('bible:last', { b: prefs.book, c: prefs.ch, v, at: Date.now() });
+    markLast(v);
+  }
+  addEventListener('scroll', () => { clearTimeout(saveT); saveT = setTimeout(saveSpot, 500); }, { passive: true });
+  addEventListener('pagehide', saveSpot);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) saveSpot(); });
+  const goVerse = (v) => {
+    const el = document.getElementById('v' + v); if (!el) return;
+    scrollTo({ top: scrollY + el.getBoundingClientRect().top - readLine() + 8, behavior: 'instant' });
+  };
+  function askResume(last) {
+    const row = App.rows.find((r) => r[0] === last.v); if (!row) return;
+    pending = last; markLast(last.v);
+    $('#resumeTitle').textContent = `回到上次讀到的地方？（${App.ref(last.b, last.c, last.v)}）`;
+    $('#resumeSnip').textContent = '📍 ' + App.en(row);
+    $('#resume').hidden = false;
+    $('#resumeGo').onclick = () => { $('#resume').hidden = true; pending = null; goVerse(last.v); markLast(last.v); };
+    $('#resumeNo').onclick = () => { $('#resume').hidden = true; pending = null; saveSpot(); };
+  }
+
   async function open(b, c, verse) {
     if (App.stop) App.stop();
+    $('#resume').hidden = true; pending = null; loading = true;
     prefs.book = b; prefs.ch = c; App.save();
     $('#list').innerHTML = '<p class="chapter-end">載入中…</p>';
     try {
@@ -55,11 +95,15 @@
       if (!r.ok) throw new Error(r.status);
       App.rows = await r.json();
     } catch {
-      $('#list').innerHTML = '<p class="chapter-end">載入失敗，請確認網路後再試一次。</p>'; return;
+      $('#list').innerHTML = '<p class="chapter-end">載入失敗，請確認網路後再試一次。</p>'; loading = false; return;
     }
     render();
     const el = verse && document.getElementById('v' + verse);
     if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('now'); setTimeout(() => el.classList.remove('now'), 2000); } else scrollTo(0, 0);
+    const last = store.get('bible:last', null);
+    if (last && last.b === b && last.c === c) markLast(last.v);
+    setTimeout(() => { loading = false; }, 300);
+    return last;
   }
   App.open = open;
   function step(d) {
@@ -147,5 +191,11 @@
   }
 
   applyPrefs();
-  addEventListener('load', () => open(prefs.book, prefs.ch));
+  // 打開網頁：回到上次那一章，若讀到一半就問要不要回到黃線處
+  addEventListener('load', async () => {
+    const last = store.get('bible:last', null);
+    if (last) { prefs.book = last.b; prefs.ch = last.c; }
+    await open(prefs.book, prefs.ch);
+    if (last && last.v > 1) setTimeout(() => askResume(last), 350);
+  });
 })();

@@ -77,6 +77,13 @@
   <p id="checkHeard" class="heard"></p>
 </section>
 
+<!-- 回到上次讀到的地方 -->
+<section id="resume" hidden role="dialog" aria-labelledby="resumeTitle">
+  <p class="rt" id="resumeTitle"></p>
+  <p class="rs" id="resumeSnip"></p>
+  <div class="rb"><button id="resumeNo">從本章開頭</button><button class="go" id="resumeGo">回到黃線處</button></div>
+</section>
+
 <div id="toast" hidden></div>
 <script src="books.js"></script>
 <script src="app.js"></script>
