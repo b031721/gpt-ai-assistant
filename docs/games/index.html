@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>棋類教練</title>
+<style>
+  :root { --bg: #ece6da; --card: #fffdf8; --ink: #2a2520; --muted: #73695e; --line: #ddd2bf; --accent: #8a5a2b; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #1c1915; --card: #26221d; --ink: #ece4d8; --muted: #a99d8f; --line: #3d352d; --accent: #c98d52; color-scheme: dark; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+    padding-block: 32px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  main { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  h1 { font-size: 28px; letter-spacing: 4px; margin: 0 0 4px; }
+  p { margin: 0 0 8px; color: var(--muted); line-height: 1.6; }
+  a.game { display: flex; align-items: center; gap: 16px; padding: 18px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); color: inherit; text-decoration: none; }
+  a.game:focus-visible, a.game:hover { border-color: var(--accent); }
+  .icon { font-size: 34px; width: 52px; height: 52px; display: grid; place-items: center; border-radius: 50%; background: var(--bg); flex: none; }
+  .name { font-size: 20px; font-weight: 700; }
+  .desc { font-size: 14px; color: var(--muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>棋類教練</h1>
+  <p>和電腦下棋，教練每一步都會告訴你對方想做什麼、要小心什麼，以及建議你怎麼走。不用註冊，打開就能玩。</p>
+  <a class="game" href="../xiangqi/"><span class="icon">帥</span><span><span class="name">象棋</span><span class="desc">紅方先走，每步提醒與建議</span></span></a>
+  <a class="game" href="../weiqi/"><span class="icon">●</span><span><span class="name">圍棋</span><span class="desc">大盤 19 路、中盤 13 路、小盤 9 路</span></span></a>
+  <a class="game" href="../chess/"><span class="icon">♞</span><span><span class="name">西洋棋</span><span class="desc">執白或執黑，每步提醒與建議</span></span></a>
+</main>
+</body>
+</html>
