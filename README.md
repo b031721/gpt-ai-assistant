@@ -57,3 +57,9 @@ Detailed changes for each release are documented in the [release notes](https://
 ### 內建好書
 
 `docs/books/` 放著幾本公版書（古騰堡計畫），打開網站就能直接讀。書單在 `scripts/books.json`，改了之後推上 GitHub，`.github/workflows/fetch-books.yml` 會自動下載、檢查書名，並把 epub 和 `index.json` 提交回來。
+
+### 聖經學英文（docs/bible）
+
+網址：`https://b031721.github.io/gpt-ai-assistant/bible/`。中英逐節對照、朗讀、跟讀模式、跟讀評分（手機 Chrome 的語音辨識）、點單字查意思、句子本。
+
+經文都是公有領域：現代英文 Berean Standard Bible（2023 年捐為公有領域）、Bible in Basic English（1949/1964）、中文和合本（1919）。資料取自 [scrollmapper/bible_databases](https://github.com/scrollmapper/bible_databases)，用 `python3 scripts/build_bible.py <資料夾>` 轉成每章一個 JSON 檔，放在 `docs/bible/data/`。
